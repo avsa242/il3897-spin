@@ -38,7 +38,7 @@ OBJ
     ser : "com.serial.terminal.ansi"
     time: "time"
     epd : "display.epaper.il3897.spi"
-'    fnt : "font.5x8"
+    fnt : "font.5x8"
 
 VAR
 
@@ -51,17 +51,11 @@ PUB Main{} | x, y, s
     epd.preset_2_13_bw{}
     clear
 
-    repeat x from 0 to 121
-        plot(x, 249, 0)
-        plot(x, 0, 0)
-    repeat y from 0 to 249
-        plot(0, y, 0)
-        plot(121, y, 0)
-
-    s := ||cnt
-    ser.dec(s)
-    repeat y from 120 to 130
-        bytemove(@_disp_buffer[(61+y*128)/8], s, 4)
+    epd.fgcolor(0)
+    epd.bgcolor(1)
+    epd.str(string("EPD 2.13''"))
+    epd.box(0, 0, 121, 249, 0, false)
+    epd.circle(61, 125, 40, 0, true)
     epd.update
 
     repeat
@@ -93,7 +87,10 @@ PUB Setup{}
     ser.clear{}
     ser.strln(string("Serial terminal started"))
 
-    if epd.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, @_disp_buffer)
+    if epd.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, @_disp_buffer)
+        epd.fontaddress(fnt.baseaddr{})
+        epd.fontscale(1)
+        epd.fontsize(6, 8)
         ser.strln(string("IL3897 driver started"))
     else
         ser.strln(string("IL3897 driver failed to start - halting"))
