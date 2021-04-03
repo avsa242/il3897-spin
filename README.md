@@ -7,7 +7,7 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for IL3897 E-In
 
 ## Salient Features
 
-* SPI connection at ~1MHz
+* SPI connection at 20MHz
 
 ## Requirements
 

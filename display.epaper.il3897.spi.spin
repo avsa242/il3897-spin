@@ -83,7 +83,7 @@ PUB Preset_2_13_BW{}
     dataentrseq($03)
     displaybounds(0, 0, 127, 249)
     bordercolor($03)
-    vcomvoltage($55)
+    vcomvoltage(2_125)
     gatevoltage(_lut_2p13_bw_full[70])
     sourcevoltage(_lut_2p13_bw_full[71], _lut_2p13_bw_full[72], _lut_2p13_bw_full[73])
     dummylineper(_lut_2p13_bw_full[74])
@@ -200,7 +200,12 @@ PUB Update{} | x, y
     repeat until displayready{}
 
 PUB VCOMVoltage(volts) | tmp
-' Set VCOM logic threshold
+' Set VCOM voltage level, in millivolts
+    case volts
+        -3_000..-0_200:
+            volts := volts / 25
+        other:
+            return
     writereg(core#WR_VCOM, 1, @volts)
 
 PUB WriteLUT(ptr_lut)
