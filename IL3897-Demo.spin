@@ -1,11 +1,11 @@
 {
     --------------------------------------------
     Filename: IL3897-Demo.spin
-    Author:
-    Description:
+    Author: Jesse Burt
+    Description: Demo of the IL3897 driver
     Copyright (c) 2021
     Started Feb 21, 2021
-    Updated Feb 21, 2021
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -15,9 +15,9 @@ CON
     _clkmode    = cfg#_clkmode
     _xinfreq    = cfg#_xinfreq
 
-' -- User-defined constants
-    SER_BAUD    = 115_200
+' -- User-modifiable constants
     LED         = cfg#LED1
+    SER_BAUD    = 115_200
 
     CS_PIN      = 4
     SCK_PIN     = 1
@@ -26,59 +26,80 @@ CON
     DC_PIN      = 6
     BUSY_PIN    = 7
 
+    WIDTH       = 122
+    HEIGHT      = 250
 ' --
 
-    WIDTH       = 128
-    HEIGHT      = 250
-    BUFFSZ      = (WIDTH * HEIGHT) / 8
+    XMAX        = WIDTH-1
+    YMAX        = HEIGHT-1
+    CENTERX     = XMAX/2
+    CENTERY     = YMAX/2
+    MIDLEFT     = CENTERX/2
+    MIDTOP      = CENTERY/2
+    MIDRIGHT    = CENTERX+MIDLEFT
+    MIDBOTTOM   = CENTERY+MIDTOP
+    BUFF_SZ     = ((WIDTH + 6) * HEIGHT) / 8
 
 OBJ
 
-    cfg : "core.con.boardcfg.flip"
-    ser : "com.serial.terminal.ansi"
-    time: "time"
-    epd : "display.epaper.il3897.spi"
-    fnt : "font.5x8"
+    cfg     : "core.con.boardcfg.flip"
+    ser     : "com.serial.terminal.ansi"
+    time    : "time"
+    epaper  : "display.epaper.il3897.spi"
+    fnt     : "font.5x8"
 
 VAR
 
-    byte _disp_buffer[BUFFSZ]
+    byte _framebuff[BUFF_SZ]
 
-PUB Main{} | x, y, s
+PUB Main{} | i
 
     setup{}
-    ser.printf3(string("size: %x  start: %x  end: %x\n"), BUFFSZ, @_disp_buffer, @_disp_buffer+BUFFSZ)
-    epd.preset_2_13_bw{}
-    clear
 
-    epd.fgcolor(0)
-    epd.bgcolor(1)
-    epd.str(string("EPD 2.13''"))
-    epd.box(0, 0, 121, 249, 0, false)
-    epd.circle(61, 125, 40, 0, true)
-    epd.update
+    epaper.preset_2_13_bw{}                     ' set presets for 2.13" BW
+
+    repeat until epaper.displayready{}          ' wait for display to be ready
+
+    epaper.bgcolor(epaper#WHITE)                ' set BG color for text and
+    epaper.clear{}                              '   Clear()
+    epaper.fgcolor(epaper#BLACK)                ' set FG color for text
+    epaper.box(0, 0, XMAX, YMAX, 0, FALSE)      ' draw box full-screen size
+
+    epaper.position(5, 2)
+    epaper.str(string("HELLO WORLD"))
+
+    repeat i from XMAX/2 to 0 step 4            ' concentric circles
+        epaper.circle(CENTERX, CENTERY, i, epaper#INVERT, false)
+    epaper.line(0, 0, XMAX, YMAX, epaper#INVERT)' draw diagonal lines
+    epaper.line(XMAX, 0, 0, YMAX, epaper#INVERT)
+    epaper.box(MIDLEFT, MIDTOP, MIDRIGHT, MIDBOTTOM, -1, false)
+
+    hrule{}                                     ' draw rulers at screen edges
+    vrule{}
+
+    epaper.update{}                             ' update the display
 
     repeat
 
-PUB Bitmap(p, sz)
+PUB HRule{} | x, grad_len
+' Draw a simple rule along the x-axis
+    grad_len := 5
 
-    bytemove(@_disp_buffer, p, sz)
+    repeat x from 0 to XMAX step 5
+        if x // 10 == 0
+            epaper.line(x, 0, x, grad_len, epaper#INVERT)
+        else
+            epaper.line(x, 0, x, grad_len*2, epaper#INVERT)
 
-PUB Clear{}
+PUB VRule{} | y, grad_len
+' Draw a simple rule along the y-axis
+    grad_len := 5
 
-    bytefill(@_disp_buffer, $ff, BUFFSZ)
-
-PUB Plot(x, y, color)
-
-    case color
-        1:
-            byte[@_disp_buffer][(x + y * WIDTH) / 8] |= $80 >> (x // 8)
-        0:
-            byte[@_disp_buffer][(x + y * WIDTH) / 8] &= !($80 >> (x // 8))
-        -1:
-            byte[@_disp_buffer][(x + y * WIDTH) / 8] ^= $80 >> (x // 8)
-        other:
-            return
+    repeat y from 0 to YMAX step 5
+        if y // 10 == 0
+            epaper.line(0, y, grad_len, y, epaper#INVERT)
+        else
+            epaper.line(0, y, grad_len*2, y, epaper#INVERT)
 
 PUB Setup{}
 
@@ -86,14 +107,16 @@ PUB Setup{}
     time.msleep(30)
     ser.clear{}
     ser.strln(string("Serial terminal started"))
-
-    if epd.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, @_disp_buffer)
-        epd.fontaddress(fnt.baseaddr{})
-        epd.fontscale(1)
-        epd.fontsize(6, 8)
+    if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("IL3897 driver started"))
+        epaper.fontscale(1)
+        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontsize(6, 8)
     else
         ser.strln(string("IL3897 driver failed to start - halting"))
+        epaper.stop{}
+        time.msleep(500)
+        ser.stop{}
         repeat
 
 DAT

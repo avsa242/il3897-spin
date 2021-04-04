@@ -6,14 +6,19 @@
         controller
     Copyright (c) 2021
     Started Feb 21, 2021
-    Updated Apr 3, 2021
+    Updated Apr 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
-#define IL3820
+#define IL38xx
 #include "lib.gfx.bitmap.spin"
 
 CON
+
+' Colors
+    BLACK       = 0
+    WHITE       = $FF
+    INVERT      = -1
 
     MAX_COLOR   = 1
     BYTESPERPX  = 1
@@ -22,13 +27,12 @@ VAR
 
     long _ptr_drawbuffer
     word _buff_sz
-    word bytesperln
+    word _bytesperln
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
     long _RST, _DC, _BUSY
 
 OBJ
 
-' choose an SPI engine below
     spi : "com.spi.fast"                        ' PASM SPI engine (20MHz/10MHz)
     core: "core.con.il3897"                     ' hw-specific low-level const's
     time: "time"                                ' Basic timing functions
@@ -52,15 +56,18 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
             _DC := DC_PIN
             _BUSY := BUSY_PIN
             address(PTR_DISPBUFF)
-            bytesperln := (BYTESPERPX * WIDTH)
+            _bytesperln := (BYTESPERPX * WIDTH)
             _disp_width := WIDTH
+            if (_disp_width // 8)               ' round up width to next
+                repeat                          ' multiple of 8 so alignment
+                    _disp_width++               ' is correct
+                until (_disp_width // 8) == 0
             _disp_height := HEIGHT
             _disp_xmax := _disp_width-1
             _disp_ymax := _disp_height-1
+            _buff_sz := ((_disp_width/8) * HEIGHT)
 
-            _buff_sz := ((WIDTH/8) * HEIGHT)
-
-            return status
+            return
     ' if this point is reached, something above failed
     ' Re-check I/O pin assignments, bus speed, connections, power
     ' Lastly - make sure you have at least one free core/cog
@@ -70,8 +77,12 @@ PUB Stop{}
 
     spi.deinit{}
 
+PUB Defaults{}
+' Factory default settings
+    reset{}
+
 PUB Preset_2_13_BW{}
-' Presets for 2.13" BW E-ink panel
+' Presets for 2.13" BW E-ink panel, 122x250
     repeat until displayready{}
     reset{}
     repeat until displayready{}
@@ -81,7 +92,7 @@ PUB Preset_2_13_BW{}
     gatestartpos(0)
     drvoutctrl(249)
     dataentrseq($03)
-    displaybounds(0, 0, 127, 249)
+    displaybounds(0, 0, 121, 249)
     bordercolor($03)
     vcomvoltage(2_125)
     gatevoltage(_lut_2p13_bw_full[70])

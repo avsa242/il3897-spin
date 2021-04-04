@@ -26,6 +26,10 @@ P1/SPIN1:
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
 
+## Hardware Compatibility
+
+* Tested with 2.13" BW panel (HINK-E0213A22)
+
 ## Limitations
 
 * Very early in development - may malfunction, or outright fail to build
