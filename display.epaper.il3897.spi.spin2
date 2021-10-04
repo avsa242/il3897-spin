@@ -6,7 +6,7 @@
         controller (P2 version)
     Copyright (c) 2021
     Started Apr 4, 2021
-    Updated Apr 4, 2021
+    Updated Oct 4, 2021
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,7 +44,8 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, SCK_FREQ, WIDTH
     if lookdown(CS_PIN: 0..63) and lookdown(SCK_PIN: 0..63) and {
 }   lookdown(MOSI_PIN: 0..63) and lookdown(RST_PIN: 0..63) and {
 }   lookdown(DC_PIN: 0..63) and lookdown(BUSY_PIN: 0..63)
-        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, SCK_FREQ, core.SPI_MODE))
+        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE, {
+}       SCK_FREQ))
             waitus(core.T_POR)             ' wait for device startup
             pinh(DC_PIN)
             pinh(RST_PIN)
