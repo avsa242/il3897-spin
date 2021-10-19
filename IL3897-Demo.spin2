@@ -24,7 +24,9 @@ CON
     RST_PIN     = CLICK_BASE+7
     DC_PIN      = CLICK_BASE+5
     BUSY_PIN    = CLICK_BASE+4
-    SCK_FREQ    = 15_000_000                    ' max is 15_000_000
+    SCK_FREQ    = 15_000_000                    ' max is 20_000_000
+    ' NOTE: To use SCK_FREQ > 15MHz, _clkfreq may need to be
+    '   increased to 250MHz or higher.
 
     WIDTH       = 122
     HEIGHT      = 250
