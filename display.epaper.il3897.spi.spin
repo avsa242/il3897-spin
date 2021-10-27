@@ -27,10 +27,10 @@ CON
 VAR
 
     long _ptr_drawbuffer
+    long _RST, _DC, _BUSY
     word _buff_sz
     word _bytesperln
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
-    long _RST, _DC, _BUSY
 
 OBJ
 
@@ -53,9 +53,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
             dira[RST_PIN] := 1
             dira[BUSY_PIN] := 0
 
-            _RST := RST_PIN
-            _DC := DC_PIN
-            _BUSY := BUSY_PIN
+            longmove(@_RST, @RST_PIN, 3)
             address(PTR_DISPBUFF)
             _bytesperln := (BYTESPERPX * WIDTH)
             _disp_width := WIDTH
@@ -75,8 +73,14 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
     return FALSE
 
 PUB Stop{}
-
+' Stop SPI engine, float I/O pins, and clear variable space
     spi.deinit{}
+    dira[_DC] := 0
+    dira[_RST] := 0
+    dira[_BUSY] := 0
+    longfill(@_ptr_drawbuffer, 0, 4)
+    wordfill(@_buff_sz, 0, 2)
+    bytefill(@_disp_width, 0, 4)
 
 PUB Defaults{}
 ' Factory default settings
@@ -131,7 +135,10 @@ PUB DigBlkCtrl{} | tmp
     writereg(core#DIGI_BLK_CTRL, 1, @tmp)
 
 PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
-
+' Set drawable display region for subsequent drawing operations
+'   Valid values:
+'       sx, ex: 0..121
+'       sy, ey: 0..249
     tmpx.byte[0] := sx / 8
     tmpx.byte[1] := ex / 8
 
@@ -144,7 +151,10 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core#RAM_Y_WIND, 4, @tmpy)
 
 PUB DisplayPos(x, y) | tmp
-
+' Set position for subsequent drawing operations
+'   Valid values:
+'       x: 0..121
+'       y: 0..249
     writereg(core#RAM_X, 1, @x)
     writereg(core#RAM_Y, 2, @y)
 

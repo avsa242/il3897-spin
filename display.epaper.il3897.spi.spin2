@@ -47,7 +47,7 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, SCK_FREQ, WIDTH
 }   lookdown(DC_PIN: 0..63) and lookdown(BUSY_PIN: 0..63)
         if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE, {
 }       SCK_FREQ))
-            waitus(core.T_POR)             ' wait for device startup
+            waitus(core.T_POR)                  ' wait for device startup
             pinh(DC_PIN)
             pinh(RST_PIN)
             pinf(BUSY_PIN)
@@ -73,8 +73,14 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, SCK_FREQ, WIDTH
     return FALSE
 
 PUB Stop()
-
+' Stop SPI engine, float I/O pins, and clear variable space
     spi.deinit()
+    pinf(_DC)
+    pinf(_RST)
+    pinf(_BUSY)
+    longfill(@_ptr_drawbuffer, 0, 4)
+    wordfill(@_buff_sz, 0, 2)
+    bytefill(@_disp_width, 0, 4)
 
 PUB Defaults()
 ' Factory default settings
@@ -129,7 +135,10 @@ PUB DigBlkCtrl() | tmp
     writereg(core.DIGI_BLK_CTRL, 1, @tmp)
 
 PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
-
+' Set drawable display region for subsequent drawing operations
+'   Valid values:
+'       sx, ex: 0..121
+'       sy, ey: 0..249
     tmpx.byte[0] := sx / 8
     tmpx.byte[1] := ex / 8
 
@@ -142,7 +151,10 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core.RAM_Y_WIND, 4, @tmpy)
 
 PUB DisplayPos(x, y) | tmp
-
+' Set position for subsequent drawing operations
+'   Valid values:
+'       x: 0..121
+'       y: 0..249
     writereg(core.RAM_X, 1, @x)
     writereg(core.RAM_Y, 2, @y)
 
