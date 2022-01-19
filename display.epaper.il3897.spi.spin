@@ -282,12 +282,14 @@ PUB MasterAct{}
 
 PUB Reset{}
 ' Reset the device
-'    writereg(core#SWRESET, 0, 0)
-'    time.usleep(core#T_POR)
-    outa[_RST] := 0
-    time.msleep(200)
-    outa[_RST] := 1
-    time.msleep(200)
+    if (lookdown(_RST: 0..31))                  ' only touch the reset pin
+        outa[_RST] := 0                         '   if it's defined
+        time.msleep(200)
+        outa[_RST] := 1
+        time.msleep(200)
+    else                                        ' otherwise, just perform
+        writereg(core#SWRESET, 0, 0)            '   soft-reset
+        time.usleep(core#T_POR)
     repeat until displayready{}
 
 PUB SourceVoltage(vsh1, vsh2, vsl) | tmp
