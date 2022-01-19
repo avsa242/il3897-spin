@@ -4,9 +4,9 @@
     Author: Jesse Burt
     Description: Driver for IL3897/SSD1675 AM E-Paper display
         controller
-    Copyright (c) 2021
+    Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Oct 19, 2021
+    Updated Jan 19, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -17,12 +17,31 @@
 CON
 
 ' Colors
-    BLACK       = 0
-    WHITE       = $FF
-    INVERT      = -1
+    BLACK           = 0
+    WHITE           = $FF
+    INVERT          = -1
 
-    MAX_COLOR   = 1
-    BYTESPERPX  = 1
+    MAX_COLOR       = 1
+    BYTESPERPX      = 1
+
+' Border waveform control
+    GS_TRANS        = %00
+    FIXEDLEV        = %01
+    VCOM            = %10
+    HIZ             = %11
+
+    VSS             = %00
+    VSH1            = %01
+    VSL             = %10
+    VSH2            = %11
+
+    FLWLUT_VCOMRED  = 0
+    FLWLUT          = 1
+
+    LUT0            = %00
+    LUT1            = %01
+    LUT2            = %10
+    LUT3            = %11
 
 VAR
 
@@ -31,6 +50,9 @@ VAR
     word _buff_sz
     word _bytesperln
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
+
+    ' shadow registers
+    byte _brd_wvf_ctrl
 
 OBJ
 
@@ -98,7 +120,12 @@ PUB Preset_2_13_BW{}
     drvoutctrl(249)
     dataentrseq($03)
     displaybounds(0, 0, 121, 249)
-    bordercolor($03)
+
+    bordermode(HIZ)
+    bordervbdlev(VSS)
+    bordergstctrl(FLWLUT_VCOMRED)
+    bordergstrans(LUT0)
+
     vcomvoltage(2_125)
     gatevoltage(_lut_2p13_bw_full[70])
     sourcevoltage(_lut_2p13_bw_full[71], _lut_2p13_bw_full[72], _lut_2p13_bw_full[73])
@@ -121,9 +148,68 @@ PUB AnalogBlkCtrl{} | tmp
     tmp := $54
     writereg(core#ANLG_BLK_CTRL, 1, @tmp)
 
-PUB BorderColor(clr)
-' Border waveform control/border color
-    writereg(core#BRD_WAVE_CTRL, 1, @clr)
+PUB BorderGSTCtrl(mode): curr_mode
+' Set border waveform GS transition mode
+'   Valid values:
+'       FLWLUT_VCOMRED (0)
+'       FLWLUT (1)
+'   Any other value returns the current (cached) setting
+    curr_mode := _brd_wvf_ctrl
+    case mode
+        FLWLUT_VCOMRED, FLWLUT:
+            mode <<= core#GSTRC
+        other:
+            return ((curr_mode >> core#GSTRC) & 1)
+
+    _brd_wvf_ctrl := ((curr_mode & core#GSTRC_MASK) | mode)
+    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
+PUB BorderGSTrans(trans): curr_trans
+' Set border waveform transition
+    curr_trans := _brd_wvf_ctrl
+    case trans
+        LUT0..LUT3:
+        other:
+            return (curr_trans & core#GSTRS_BITS)
+
+    _brd_wvf_ctrl := ((curr_trans & core#GSTRS_MASK) | trans)
+    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
+PUB BorderMode(mode): curr_mode
+' Set border waveform VBD option
+'   Valid values:
+'       GS_TRANS (%00)
+'       FIXEDLEV (%01)
+'       VCOM (%10)
+'       HIZ (%11)
+'   Any other value returns the current (cached) setting
+    curr_mode := _brd_wvf_ctrl
+    case mode
+        GS_TRANS, FIXEDLEV, VCOM, HIZ:
+            mode << core#VBDOPT
+        other:
+            return ((curr_mode >> core#VBDOPT) & core#VBDOPT_BITS)
+
+    _brd_wvf_ctrl := ((curr_mode & core#VBDOPT_MASK) | mode)
+    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
+PUB BorderVBDLev(level): curr_lev
+' Set border fixed VBD level
+'   Valid values:
+'       VSS (%00)
+'       VSH1 (%01)
+'       VSL (%10)
+'       VSH2 (%11)
+'   Any other value returns the current (cached) setting
+    curr_lev := _brd_wvf_ctrl
+    case level
+        VSS, VSH1, VSL, VSH2:
+            level <<= core#VBDLVL
+        other:
+            return ((curr_lev >> core#VBDLVL) & core#VBDLVL_BITS)
+
+    _brd_wvf_ctrl := ((curr_lev & core#VBDLVL_MASK) | level)
+    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
 PUB DataEntrSeq(mode)
 
