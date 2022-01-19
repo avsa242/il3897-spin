@@ -7,7 +7,7 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for IL3897 E-In
 
 ## Salient Features
 
-* SPI connection at 20MHz (P1), up to 15MHz (P2)
+* SPI connection at 20MHz (P1), up to 20MHz (P2)
 
 ## Requirements
 OA
@@ -17,11 +17,15 @@ P1/SPIN1:
 
 P2/SPIN2:
 * p2-spin-standard-library
+* 250MHz sys clock, for 20MHz SPI bus speed (limit at 160MHz default is 15MHz
 
 ## Compiler Compatibility
 
-* P1/SPIN1: OpenSpin (tested with 1.00.81)
-* P2/SPIN2: FlexSpin (tested with 5.3.2)
+* P1/SPIN1 OpenSpin (bytecode): OK, tested with 1.00.81
+* P1/SPIN1 FlexSpin (bytecode): OK, tested with 5.9.7-beta
+* P1/SPIN1 FlexSpin (native): OK, tested with 5.9.7-beta
+* ~~P2/SPIN2 FlexSpin (nu-code): FTBFS, tested with 5.9.7-beta~~
+* P2/SPIN2 FlexSpin (native): OK, tested with 5.9.7-beta
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
@@ -30,14 +34,8 @@ P2/SPIN2:
 
 * Tested with 2.13" BW panel (HINK-E0213A22), [Parallax #64204](https://www.parallax.com/product/eink-click-e-paper-bundle-2/)
 
-## Known issues
-
-* SPIN2/P2 driver doesn't display with SPI clock >15MHz
-
 ## Limitations
 
 * Very early in development - may malfunction, or outright fail to build
+* Tri-color panels (e.g., with additional red channel) aren't supported
 
-## TODO
-
-- [ ] TBD
