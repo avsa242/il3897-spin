@@ -43,6 +43,14 @@ CON
     LUT2            = %10
     LUT3            = %11
 
+' Display addressing modes
+    HORIZ           = 0
+    VERT            = 1
+    YD_XD           = %00
+    YD_XI           = %01
+    YI_XD           = %10
+    YI_XI           = %11
+
 VAR
 
     long _ptr_drawbuffer
@@ -52,7 +60,7 @@ VAR
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers
-    byte _brd_wvf_ctrl
+    byte _brd_wvf_ctrl, _data_entr_mode
 
 OBJ
 
@@ -118,7 +126,9 @@ PUB Preset_2_13_BW()
     digblkctrl()
     gatestartpos(0)
     drvoutctrl(249)
-    dataentrseq($03)
+    addrmode(HORIZ)
+    addrctrmode(YI_XI)
+
     displaybounds(0, 0, 121, 249)
 
     bordermode(HIZ)
@@ -142,6 +152,39 @@ PUB Address(ptr_drawbuff)
             _ptr_drawbuffer := ptr_drawbuff
         other:
             return _ptr_drawbuffer
+
+PUB AddrCtrMode(mode): curr_mode
+' Set address increment/decrement mode
+'   Valid values:
+'       YD_XD (%00): Y-decrement, X-decrement
+'       YD_XI (%01): Y-decrement, X-increment
+'       YI_XD (%10): Y-increment, X-decrement
+'      *YI_XI (%11): Y-increment, X-increment
+'   Any other value returns the current (cached) setting
+    curr_mode := _data_entr_mode
+    case mode
+        YD_XD, YD_XI, YI_XD, YI_XI:
+        other:
+            return (curr_mode & core.ID_BITS)
+
+    _data_entr_mode := ((curr_mode & core.ID_MASK) | mode)
+    writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
+
+PUB AddrMode(mode): curr_mode
+' Set display addressing mode
+'   Valid values:
+'      *HORIZ (0)
+'       VERT (1)
+'   Any other value returns the current (cached) setting
+    curr_mode := _data_entr_mode
+    case mode
+        HORIZ, VERT:
+            mode <<= core.AM
+        other:
+            return ((curr_mode >> core.AM) & 1)
+
+    _data_entr_mode := ((curr_mode & core.AM_MASK) | mode)
+    writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
 
 PUB AnalogBlkCtrl() | tmp
 ' Analog Block control
@@ -210,10 +253,6 @@ PUB BorderVBDLev(level): curr_lev
 
     _brd_wvf_ctrl := ((curr_lev & core.VBDLVL_MASK) | level)
     writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
-
-PUB DataEntrSeq(mode)
-
-    writereg(core.DATA_ENT_MD, 1, @mode)
 
 PUB DigBlkCtrl() | tmp
 ' Digital Block control

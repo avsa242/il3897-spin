@@ -33,6 +33,12 @@ CON
     DEEP_SLP        = $10
 
     DATA_ENT_MD     = $11
+    DATA_ENT_MD_MASK= $07
+        AM          = 2
+        ID          = 0
+        ID_BITS     = %11
+        AM_MASK     = (1 << AM) ^ DATA_ENT_MD_MASK
+        ID_MASK     = 1 ^ DATA_ENT_MD_MASK
 
     SWRESET         = $12
 
