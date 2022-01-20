@@ -415,10 +415,8 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
             pinl(_DC)
             pinl(_CS)
             spi.wr_byte(reg_nr)
-            pinh(_CS)
 
             pinh(_DC)
-            pinl(_CS)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
             pinh(_CS)
         other:

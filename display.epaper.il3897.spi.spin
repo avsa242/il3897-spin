@@ -54,7 +54,7 @@ CON
 VAR
 
     long _ptr_drawbuffer
-    long _RST, _DC, _BUSY
+    long _CS, _RST, _DC, _BUSY
     word _buff_sz
     word _bytesperln
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
@@ -64,7 +64,7 @@ VAR
 
 OBJ
 
-    spi : "com.spi.fast"                        ' PASM SPI engine (20MHz/10MHz)
+    spi : "com.spi.fast-nocs"                   ' PASM SPI engine (20MHz/10MHz)
     core: "core.con.il3897"                     ' hw-specific low-level const's
     time: "time"                                ' Basic timing functions
 
@@ -76,13 +76,16 @@ PUB Startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, 
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and {
 }   lookdown(DC_PIN: 0..31) and lookdown(BUSY_PIN: 0..31)
-        if (status := spi.init(CS_PIN, SCK_PIN, MOSI_PIN, -1, core#SPI_MODE))
+        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core#SPI_MODE))
             time.usleep(core#T_POR)             ' wait for device startup
             dira[DC_PIN] := 1
             outa[RST_PIN] := 1
             dira[RST_PIN] := 1
             dira[BUSY_PIN] := 0
+            outa[CS_PIN] := 1
+            dira[CS_PIN] := 1
 
+            _CS := CS_PIN
             longmove(@_RST, @RST_PIN, 3)
             address(PTR_DISPBUFF)
             _bytesperln := (BYTESPERPX * WIDTH)
@@ -391,32 +394,34 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
     case reg_nr
         core#WR_RAM_BW:
             outa[_DC] := 0
-            spi.deselectafter(false)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
             outa[_DC] := 1
-            spi.deselectafter(true)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
             return
         core#SWRESET, core#DISP_UP_CTRL2, core#MASTER_ACT:
             outa[_DC] := 0
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
+            outa[_CS] := 1
             return
         core#NOOP:
             outa[_DC] := 0
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
+            outa[_CS] := 1
             return
         $01, $03, $04, $0C, $0F, $10, $11, $14, $15, $1A, $1C, {
 }       $26, $28, $29, $2C, $31, $32, $3A..$3C, $41, $44..$47, $4E, $4F, $74, {
 }       $7E, $7F:
             outa[_DC] := 0
-            spi.deselectafter(true)
+            outa[_CS] := 0
             spi.wr_byte(reg_nr)
 
             outa[_DC] := 1
-            spi.deselectafter(true)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
+            outa[_CS] := 1
         other:
             return
 
