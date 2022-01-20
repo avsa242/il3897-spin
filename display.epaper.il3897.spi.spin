@@ -6,7 +6,7 @@
         controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Jan 19, 2022
+    Updated Jan 20, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -167,7 +167,11 @@ PUB AddrCtrMode(mode): curr_mode
         other:
             return (curr_mode & core#ID_BITS)
 
-    _data_entr_mode := ((curr_mode & core#ID_MASK) | mode)
+    mode := ((curr_mode & core#ID_MASK) | mode)
+    if (mode == curr_mode)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _data_entr_mode := mode
     writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
 PUB AddrMode(mode): curr_mode
@@ -183,7 +187,11 @@ PUB AddrMode(mode): curr_mode
         other:
             return ((curr_mode >> core#AM) & 1)
 
-    _data_entr_mode := ((curr_mode & core#AM_MASK) | mode)
+    mode := ((curr_mode & core#AM_MASK) | mode)
+    if (mode == curr_mode)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _data_entr_mode := mode
     writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
 
 PUB AnalogBlkCtrl{} | tmp
@@ -204,7 +212,11 @@ PUB BorderGSTCtrl(mode): curr_mode
         other:
             return ((curr_mode >> core#GSTRC) & 1)
 
-    _brd_wvf_ctrl := ((curr_mode & core#GSTRC_MASK) | mode)
+    mode := ((curr_mode & core#GSTRC_MASK) | mode)
+    if (mode == curr_mode)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _brd_wvf_ctrl := mode
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
 PUB BorderGSTrans(trans): curr_trans
@@ -215,7 +227,11 @@ PUB BorderGSTrans(trans): curr_trans
         other:
             return (curr_trans & core#GSTRS_BITS)
 
-    _brd_wvf_ctrl := ((curr_trans & core#GSTRS_MASK) | trans)
+    trans := ((curr_trans & core#GSTRS_MASK) | trans)
+    if (trans == curr_trans)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _brd_wvf_ctrl := trans
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
 PUB BorderMode(mode): curr_mode
@@ -233,7 +249,11 @@ PUB BorderMode(mode): curr_mode
         other:
             return ((curr_mode >> core#VBDOPT) & core#VBDOPT_BITS)
 
-    _brd_wvf_ctrl := ((curr_mode & core#VBDOPT_MASK) | mode)
+    mode := ((curr_mode & core#VBDOPT_MASK) | mode)
+    if (mode == curr_mode)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _brd_wvf_ctrl := mode
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
 PUB BorderVBDLev(level): curr_lev
@@ -251,7 +271,11 @@ PUB BorderVBDLev(level): curr_lev
         other:
             return ((curr_lev >> core#VBDLVL) & core#VBDLVL_BITS)
 
-    _brd_wvf_ctrl := ((curr_lev & core#VBDLVL_MASK) | level)
+    level := ((curr_lev & core#VBDLVL_MASK) | level)
+    if (level == curr_lev)                      ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _brd_wvf_ctrl := level
     writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
 PUB DigBlkCtrl{} | tmp
