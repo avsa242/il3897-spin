@@ -6,7 +6,7 @@
         controller (P2 version)
     Copyright (c) 2022
     Started Apr 4, 2021
-    Updated Jan 20, 2022
+    Updated Jan 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -60,7 +60,7 @@ VAR
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers
-    byte _brd_wvf_ctrl, _data_entr_mode
+    byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3]
 
 OBJ
 
@@ -125,7 +125,10 @@ PUB Preset_2_13_BW()
     analogblkctrl()
     digblkctrl()
     gatestartpos(0)
-    drvoutctrl(249)
+    displaylines(250)
+    gatefirstchan(0)
+    interlaced(false)
+    mirrorv(false)
     addrmode(HORIZ)
     addrctrmode(YI_XI)
 
@@ -167,7 +170,7 @@ PUB AddrCtrMode(mode): curr_mode
         other:
             return (curr_mode & core.ID_BITS)
 
-    mode := ((curr_mode & core#ID_MASK) | mode)
+    mode := ((curr_mode & core.ID_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
@@ -187,7 +190,7 @@ PUB AddrMode(mode): curr_mode
         other:
             return ((curr_mode >> core.AM) & 1)
 
-    mode := ((curr_mode & core#AM_MASK) | mode)
+    mode := ((curr_mode & core.AM_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
@@ -212,7 +215,7 @@ PUB BorderGSTCtrl(mode): curr_mode
         other:
             return ((curr_mode >> core.GSTRC) & 1)
 
-    mode := ((curr_mode & core#GSTRC_MASK) | mode)
+    mode := ((curr_mode & core.GSTRC_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
@@ -227,8 +230,8 @@ PUB BorderGSTrans(trans): curr_trans
         other:
             return (curr_trans & core.GSTRS_BITS)
 
-    trans := ((curr_trans & core#GSTRS_MASK) | trans)
-    if (trans == curr_trans)                      ' no change to shadow reg;
+    trans := ((curr_trans & core.GSTRS_MASK) | trans)
+    if (trans == curr_trans)                    ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _brd_wvf_ctrl := trans
@@ -249,7 +252,7 @@ PUB BorderMode(mode): curr_mode
         other:
             return ((curr_mode >> core.VBDOPT) & core.VBDOPT_BITS)
 
-    mode := ((curr_mode & core#VBDOPT_MASK) | mode)
+    mode := ((curr_mode & core.VBDOPT_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
@@ -271,7 +274,7 @@ PUB BorderVBDLev(level): curr_lev
         other:
             return ((curr_lev >> core.VBDLVL) & core.VBDLVL_BITS)
 
-    level := ((curr_lev & core#VBDLVL_MASK) | level)
+    level := ((curr_lev & core.VBDLVL_MASK) | level)
     if (level == curr_lev)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
@@ -299,6 +302,25 @@ PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
     writereg(core.RAM_X_WIND, 2, @tmpx)
     writereg(core.RAM_Y_WIND, 4, @tmpy)
 
+PUB DisplayLines(lines): curr_lines
+' Set display visible lines
+'   Valid values: 1..296
+'   Any other value returns the current (cached) setting
+    curr_lines.byte[0] := _drv_out_ctrl[0]
+    curr_lines.byte[1] := _drv_out_ctrl[1]
+    case lines
+        1..296:
+            lines -= 1
+        other:
+            return (curr_lines + 1)
+
+    if (lines == curr_lines)                    ' no change to shadow reg;
+        return                                  ' don't bother writing
+    else
+        _drv_out_ctrl[0] := lines.byte[0]
+        _drv_out_ctrl[1] := lines.byte[1]
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+
 PUB DisplayPos(x, y) | tmp
 ' Set position for subsequent drawing operations
 '   Valid values:
@@ -316,16 +338,29 @@ PUB DispUpdateCtrl2() | tmp
     tmp := $c7
     writereg(core.DISP_UP_CTRL2, 1, 0)
 
-PUB DrvOutCtrl(lines) | tmp
-
-    tmp.byte[0] := lines.byte[0]  'mux/displaylines (9 bits)
-    tmp.byte[1] := lines.byte[1]    'mux msb
-    tmp.byte[2] := %000 'gate scan seq & dir: GD | SM | TB
-    writereg(core.DRV_OUT_CTRL, 3, @tmp)
-
 PUB DummyLinePer(ln_per)
 
     writereg(core.DUMMY_LN_PER, 1, @ln_per)
+
+PUB GateFirstChan(ch): curr_ch
+' Set first output gate
+'   Valid values:
+'       0: G0 first channel; output sequence is G0, G1, G2, G3...
+'       1: G1 first channel; output sequence is G1, G0, G3, G2...
+'   Any other value returns the current (cached) setting
+    curr_ch := _drv_out_ctrl[2]
+    case ch
+        0, 1:
+            ch <<= core.GD
+        other:
+            return ((curr_ch >> core.GD) & 1)
+
+    ch := ((curr_ch & core.GD_MASK) | ch)
+    if (ch == curr_ch)
+        return
+    else
+        _drv_out_ctrl[2] := ch
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
 PUB GateLineWidth(ln_wid)
 
@@ -339,9 +374,45 @@ PUB GateVoltage(volts)
 
     writereg(core.GATE_DRV_CTRL, 1, @volts)
 
+PUB Interlaced(state): curr_state
+' Alternate direction of every other display line
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current (cached) setting
+    curr_state := _drv_out_ctrl[2]
+    case abs(state)
+        0, 1:
+            state := abs(state) << core.SM
+        other:
+            return (((curr_state >> core.SM) & 1) == 1)
+
+    state := ((curr_state & core.SM_MASK) | state)
+    if (state == curr_state)
+        return
+    else
+        _drv_out_ctrl[2] := state
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+
 PUB MasterAct()
 
     writereg(core.MASTER_ACT, 0, 0)
+
+PUB MirrorV(state): curr_state  'XXX not functional yet
+' Mirror display, vertically
+'   Valid values: TRUE (-1 or 1), FALSE (0)
+'   Any other value returns the current (cached) setting
+    curr_state := _drv_out_ctrl[2]
+    case abs(state)
+        0, 1:
+            state := abs(state) << core.TB
+        other:
+            return (((curr_state >> core.TB) & 1) == 1)
+
+    state := ((curr_state & core.TB_MASK) | state)
+    if (state == curr_state)
+        return
+    else
+        _drv_out_ctrl[2] := state
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
 PUB Reset()
 ' Reset the device

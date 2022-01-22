@@ -5,7 +5,7 @@
     Description: IL3897-specific Low-level constants
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Jan 19, 2022
+    Updated Jan 21, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -21,6 +21,13 @@ CON
 
 ' Register definitions
     DRV_OUT_CTRL    = $01
+    DRVOUT_CTRL_MASK= $07                       ' param 'B' only
+        GD          = 2
+        SM          = 1
+        TB          = 0
+        GD_MASK     = (1 << GD) ^ DRVOUT_CTRL_MASK
+        SM_MASK     = (1 << SM) ^ DRVOUT_CTRL_MASK
+        TB_MASK     = 1 ^ DRVOUT_CTRL_MASK
 
     GATE_DRV_CTRL   = $03
 
