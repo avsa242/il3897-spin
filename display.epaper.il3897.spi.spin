@@ -6,7 +6,7 @@
         controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Jan 21, 2022
+    Updated Jan 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -30,10 +30,10 @@ CON
     VCOM            = %10
     HIZ             = %11
 
-    VSS             = %00
-    VSH1            = %01
-    VSL             = %10
-    VSH2            = %11
+    BRD_VSS         = %00
+    BRD_VSH1        = %01
+    BRD_VSL         = %10
+    BRD_VSH2        = %11
 
     FLWLUT_VCOMRED  = 0
     FLWLUT          = 1
@@ -51,6 +51,32 @@ CON
     YI_XD           = %10
     YI_XI           = %11
 
+' Source drive voltage control
+    VSH1            = 0
+    VSH2            = 1
+    VSL             = 2
+
+' Waveform LUT offsets
+    WV_LUT0         = 0
+    WV_LUT1         = 7
+    WV_LUT2         = 14
+    WV_LUT3         = 21
+    WV_LUT4         = 28
+    WV_TP0          = 35
+    WV_TP1          = 40
+    WV_TP2          = 45
+    WV_TP3          = 50
+    WV_TP4          = 55
+    WV_TP5          = 60
+    WV_TP6          = 65
+
+    GDC             = 70
+    SDC0            = 71
+    SDC1            = 72
+    SDC2            = 73
+    DL              = 74
+    GT              = 75
+
 VAR
 
     long _ptr_drawbuffer
@@ -60,7 +86,7 @@ VAR
     byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers
-    byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3]
+    byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3], _src_drv_volt[3]
 
 OBJ
 
@@ -138,13 +164,16 @@ PUB Preset_2_13_BW{}
     displaybounds(0, 0, 121, 249)
 
     bordermode(HIZ)
-    bordervbdlev(VSS)
+    bordervbdlev(BRD_VSS)
     bordergstctrl(FLWLUT_VCOMRED)
     bordergstrans(LUT0)
 
     vcomvoltage(2_125)
     gatevoltage(_lut_2p13_bw_full[70])
-    sourcevoltage(_lut_2p13_bw_full[71], _lut_2p13_bw_full[72], _lut_2p13_bw_full[73])
+    vsh1voltage(15_000)
+    vsh2voltage(5_000)
+    vslvoltage(-15_000)
+
     dummylineper(_lut_2p13_bw_full[74])
     gatelinewidth(_lut_2p13_bw_full[75])
     writelut(@_lut_2p13_bw_full)
@@ -251,7 +280,7 @@ PUB BorderMode(mode): curr_mode
     curr_mode := _brd_wvf_ctrl
     case mode
         GS_TRANS, FIXEDLEV, VCOM, HIZ:
-            mode << core#VBDOPT
+            mode <<= core#VBDOPT
         other:
             return ((curr_mode >> core#VBDOPT) & core#VBDOPT_BITS)
 
@@ -265,14 +294,14 @@ PUB BorderMode(mode): curr_mode
 PUB BorderVBDLev(level): curr_lev
 ' Set border fixed VBD level
 '   Valid values:
-'       VSS (%00)
-'       VSH1 (%01)
-'       VSL (%10)
-'       VSH2 (%11)
+'       BRD_VSS (%00)
+'       BRD_VSH1 (%01)
+'       BRD_VSL (%10)
+'       BRD_VSH2 (%11)
 '   Any other value returns the current (cached) setting
     curr_lev := _brd_wvf_ctrl
     case level
-        VSS, VSH1, VSL, VSH2:
+        BRD_VSS, BRD_VSH1, BRD_VSL, BRD_VSH2:
             level <<= core#VBDLVL
         other:
             return ((curr_lev >> core#VBDLVL) & core#VBDLVL_BITS)
@@ -292,8 +321,8 @@ PUB DigBlkCtrl{} | tmp
 PUB DisplayBounds(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
 '   Valid values:
-'       sx, ex: 0..121
-'       sy, ey: 0..249
+'       sx, ex: 0..159
+'       sy, ey: 0..295
     tmpx.byte[0] := sx / 8
     tmpx.byte[1] := ex / 8
 
@@ -327,8 +356,8 @@ PUB DisplayLines(lines): curr_lines
 PUB DisplayPos(x, y) | tmp
 ' Set position for subsequent drawing operations
 '   Valid values:
-'       x: 0..121
-'       y: 0..249
+'       x: 0..159
+'       y: 0..295
     writereg(core#RAM_X, 1, @x)
     writereg(core#RAM_Y, 2, @y)
 
@@ -429,13 +458,6 @@ PUB Reset{}
         time.usleep(core#T_POR)
     repeat until displayready{}
 
-PUB SourceVoltage(vsh1, vsh2, vsl) | tmp
-
-    tmp.byte[0] := vsh1
-    tmp.byte[1] := vsh2
-    tmp.byte[2] := vsl
-    writereg(core#SRC_DRV_CTRL, 3, @tmp)
-
 PUB Update{} | x, y
 ' Send the draw buffer to the display
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
@@ -454,6 +476,73 @@ PUB VCOMVoltage(volts) | tmp
         other:
             return
     writereg(core#WR_VCOM, 1, @volts)
+
+PUB VSH1Voltage(lvl): curr_lvl
+' Set source driving voltage (VSH1), in millivolts
+'   Valid values: 2_400..18_000
+'       2_400..8_800: rounded to multiples of 100mV
+'       9_000..18_000: rounded to multiples of 200mV
+'   Any other value returns the current (cached) setting
+    curr_lvl := _src_drv_volt[VSH1]
+    case lvl
+        2_400..8_800:
+            lvl := ((lvl - 2_400) / 100) + $8E  ' $8E == 2_400 (+.1, .2, .3...)
+        9_000..18_000:
+            lvl := ((lvl - 9_000) / 200) + $23  ' $23 == 9_000 (+.2, .4, .6...)
+        other:
+            case curr_lvl
+                $8E..$CE:                       ' 2_400..8_800
+                    return (((curr_lvl - $8E) * 100) + 2_400)
+                $23..$50:                       ' 9_000..18_000
+                    return (((curr_lvl - $23) * 200) + 9_000)
+
+    if (lvl == curr_lvl)                        ' no change to shadow reg;
+        return                                  '   don't bother writing
+    else
+        _src_drv_volt[VSH1] := lvl
+        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
+
+PUB VSH2Voltage(lvl): curr_lvl
+' Set source driving voltage (VSH2), in millivolts
+'   Valid values: 2_400..18_000
+'       2_400..8_800: rounded to multiples of 100mV
+'       9_000..18_000: rounded to multiples of 200mV
+'   Any other value returns the current (cached) setting
+    curr_lvl := _src_drv_volt[VSH2]
+    case lvl
+        2_400..8_800:
+            lvl := ((lvl - 2_400) / 100) + $8E  ' $8E == 2_400 (+.1, .2, .3...)
+        9_000..18_000:
+            lvl := ((lvl - 9_000) / 200) + $23  ' $23 == 9_000 (+.2, .4, .6...)
+        other:
+            case curr_lvl
+                $8E..$CE:                       ' 2_400..8_800
+                    return (((curr_lvl - $8E) * 100) + 2_400)
+                $23..$50:                       ' 9_000..18_000
+                    return (((curr_lvl - $23) * 200) + 9_000)
+
+    if (lvl == curr_lvl)                        ' no change to shadow reg;
+        return                                  '   don't bother writing
+    else
+        _src_drv_volt[VSH2] := lvl
+        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
+
+PUB VSLVoltage(lvl): curr_lvl
+' Set source driving voltage (VSL), in millivolts
+'   Valid values: -18_000..-9_000 (rounded to multiples of 500mV)
+'   Any other value returns the current (cached) setting
+    curr_lvl := _src_drv_volt[VSL]
+    case lvl
+        -18_000..-9_000:
+            lvl := ((-lvl - 9_000) / 250) + $1A
+        other:
+            return -(((curr_lvl - $1A) * 250) + 9_000)
+
+    if (lvl == curr_lvl)                        ' no change to shadow reg;
+        return                                  '   don't bother writing
+    else
+        _src_drv_volt[VSL] := lvl
+        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
 
 PUB WriteLUT(ptr_lut)
 ' Write display waveform lookup table
@@ -501,23 +590,23 @@ DAT
 ' LUT waveform data
     _lut_2p13_bw_full
     '35
-    byte    $80, $60, $40, $00, $00, $00, $00   ' LUT0: BB:     VS 0 ~7
-    byte    $10, $60, $20, $00, $00, $00, $00   ' LUT1: BW:     VS 0 ~7
-    byte    $80, $60, $40, $00, $00, $00, $00   ' LUT2: WB:     VS 0 ~7
-    byte    $10, $60, $20, $00, $00, $00, $00   ' LUT3: WW:     VS 0 ~7
-    byte    $00, $00, $00, $00, $00, $00, $00   ' LUT4: VCOM:   VS 0 ~7
+    byte    {0} $80, $60, $40, $00, $00, $00, $00   ' LUT0: BB:     VS 0 ~7
+    byte    {7} $10, $60, $20, $00, $00, $00, $00   ' LUT1: BW:     VS 0 ~7
+    byte    {14}$80, $60, $40, $00, $00, $00, $00   ' LUT2: WB:     VS 0 ~7
+    byte    {21}$10, $60, $20, $00, $00, $00, $00   ' LUT3: WW:     VS 0 ~7
+    byte    {28}$00, $00, $00, $00, $00, $00, $00   ' LUT4: VCOM:   VS 0 ~7
 
     '35
-    byte    $03, $03, $00, $00, $02             ' TP0 A~D RP0
-    byte    $09, $09, $00, $00, $02             ' TP1 A~D RP1
-    byte    $03, $03, $00, $00, $02             ' TP2 A~D RP2
-    byte    $00, $00, $00, $00, $00             ' TP3 A~D RP3
-    byte    $00, $00, $00, $00, $00             ' TP4 A~D RP4
-    byte    $00, $00, $00, $00, $00             ' TP5 A~D RP5
-    byte    $00, $00, $00, $00, $00             ' TP6 A~D RP6
+    byte    {35}$03, $03, $00, $00, $02             ' TP0 A~D RP0
+    byte    {40}$09, $09, $00, $00, $02             ' TP1 A~D RP1
+    byte    {45}$03, $03, $00, $00, $02             ' TP2 A~D RP2
+    byte    {50}$00, $00, $00, $00, $00             ' TP3 A~D RP3
+    byte    {55}$00, $00, $00, $00, $00             ' TP4 A~D RP4
+    byte    {60}$00, $00, $00, $00, $00             ' TP5 A~D RP5
+    byte    {65}$00, $00, $00, $00, $00             ' TP6 A~D RP6
 
     '6
-    byte    $15, $41, $A8, $32, $30, $0A        ' GDC, SDC[0..2], DL, GT
+    byte    {70}$15, $41, $A8, $32, $30, $0A        ' GDC, SDC[0..2], DL, GT
 
     _lut_2p13_bw_partial
 
