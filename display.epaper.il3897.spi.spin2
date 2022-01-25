@@ -6,7 +6,7 @@
         controller (P2 version)
     Copyright (c) 2022
     Started Apr 4, 2021
-    Updated Jan 22, 2022
+    Updated Jan 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -310,6 +310,10 @@ PUB BorderVBDLev(level): curr_lev
         _brd_wvf_ctrl := level
     writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
+PUB Clear()
+' Clear the display buffer
+    bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+
 PUB DigBlkCtrl() | tmp
 ' Digital Block control
     tmp := $3b
@@ -443,6 +447,31 @@ PUB MirrorV(state): curr_state  'XXX not functional yet
         _drv_out_ctrl[2] := state
         writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
+#ifdef GFX_DIRECT
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (direct to display)
+
+#else
+PUB Plot(x, y, color)
+' Plot pixel at (x, y) in color (buffered)
+    case color
+        1:
+            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
+        0:
+            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] &= !($80 >> (x & 7))
+        -1:
+            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] ^= $80 >> (x & 7)
+        other:
+            return
+#endif
+
+PUB Point(x, y): pix_clr
+' Get color of pixel at x, y
+    x := 0 #> x <# _disp_xmax
+    y := 0 #> y <# _disp_ymax
+
+    return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
+
 PUB Reset()
 ' Reset the device
     if (lookdown(_RST: 0..63))                  ' only touch the reset pin
@@ -545,6 +574,13 @@ PUB WriteLUT(ptr_lut)
 ' Write display waveform lookup table
 '   NOTE: The data pointed to must be exactly 70 bytes
     writereg(core.WR_LUT, 70, ptr_lut)
+
+PRI memFill(xs, ys, val, count)
+' Fill region of display buffer memory
+'   xs, ys: Start of region
+'   val: Color
+'   count: Number of consecutive memory locations to write
+    bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
