@@ -6,7 +6,7 @@
         controller (P2 version)
     Copyright (c) 2022
     Started Apr 4, 2021
-    Updated Jan 25, 2022
+    Updated Jan 29, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -87,6 +87,7 @@ VAR
 
     ' shadow registers
     byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3], _src_drv_volt[3]
+    byte _gate_drv_volt
 
 OBJ
 
@@ -166,7 +167,7 @@ PUB Preset_2_13_BW()
     bordergstrans(LUT0)
 
     vcomvoltage(2_125)
-    gatevoltage(_lut_2p13_bw_full[70])
+    gatevoltage(19_000)
     vsh1voltage(15_000)
     vsh2voltage(5_000)
     vslvoltage(-15_000)
@@ -403,9 +404,22 @@ PUB GateStartPos(row)
 
     writereg(core.GATE_ST_POS, 2, @row)
 
-PUB GateVoltage(volts)
+PUB GateVoltage(lvl): curr_lvl
+' Set gate driving voltage (VGH), in millivolts
+'   Valid values: 10_000..21_000 (rounded to increments of 500mV)
+'   Any other value returns the current (cached) setting
+    curr_lvl := _gate_drv_volt
+    case lvl
+        10_000..21_000:
+            lvl := (((lvl-10_000) / 500) + $03) ' $03 == 10_000
+        other:
+            return ((10_000 + (curr_lvl - $03)) * 500)
 
-    writereg(core.GATE_DRV_CTRL, 1, @volts)
+    if (lvl == curr_lvl)                        ' no change to shadow reg;
+        return                                  '   don't bother writing
+    else
+        _gate_drv_volt := lvl
+        writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
 
 PUB Interlaced(state): curr_state
 ' Alternate direction of every other display line
