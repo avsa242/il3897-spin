@@ -79,11 +79,7 @@ CON
 
 VAR
 
-    long _ptr_drawbuffer
     long _CS, _RST, _DC, _BUSY
-    word _buff_sz
-    word _bytesperln
-    byte _disp_width, _disp_height, _disp_xmax, _disp_ymax
 
     ' shadow registers
     byte _brd_wvf_ctrl, _data_entr_mode, _drv_out_ctrl[3], _src_drv_volt[3]
