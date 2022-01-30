@@ -307,9 +307,11 @@ PUB BorderVBDLev(level): curr_lev
         _brd_wvf_ctrl := level
     writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
 
+#ifndef GFX_DIRECT
 PUB Clear()
 ' Clear the display buffer
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
+#endif
 
 PUB DigBlkCtrl() | tmp
 ' Digital Block control
