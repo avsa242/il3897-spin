@@ -6,7 +6,7 @@
         controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Jan 29, 2022
+    Updated Jan 30, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -501,7 +501,7 @@ PUB Reset{}
         time.usleep(core#T_POR)
     repeat until displayready{}
 
-PUB Update{} | x, y
+PUB Update{}
 ' Send the draw buffer to the display
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
 
@@ -610,13 +610,7 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff)
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
             return
-        core#SWRESET, core#DISP_UP_CTRL2, core#MASTER_ACT:
-            outa[_DC] := 0
-            outa[_CS] := 0
-            spi.wr_byte(reg_nr)
-            outa[_CS] := 1
-            return
-        core#NOOP:
+        core#SWRESET, core#DISP_UP_CTRL2, core#MASTER_ACT, core#NOOP:
             outa[_DC] := 0
             outa[_CS] := 0
             spi.wr_byte(reg_nr)
