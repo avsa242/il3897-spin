@@ -478,12 +478,14 @@ PUB Plot(x, y, color)
             return
 #endif
 
+#ifndef GFX_DIRECT
 PUB Point(x, y): pix_clr
 ' Get color of pixel at x, y
     x := 0 #> x <# _disp_xmax
     y := 0 #> y <# _disp_ymax
 
     return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
+#endif
 
 PUB Reset{}
 ' Reset the device
@@ -588,12 +590,14 @@ PUB WriteLUT(ptr_lut)
 '   NOTE: The data pointed to must be exactly 70 bytes
     writereg(core#WR_LUT, 70, ptr_lut)
 
+#ifndef GFX_DIRECT
 PRI memFill(xs, ys, val, count)
 ' Fill region of display buffer memory
 '   xs, ys: Start of region
 '   val: Color
 '   count: Number of consecutive memory locations to write
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
+#endif
 
 PRI writeReg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
