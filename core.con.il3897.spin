@@ -45,7 +45,7 @@ CON
         ID          = 0
         ID_BITS     = %11
         AM_MASK     = (1 << AM) ^ DATA_ENT_MD_MASK
-        ID_MASK     = 1 ^ DATA_ENT_MD_MASK
+        ID_MASK     = ID_BITS ^ DATA_ENT_MD_MASK
 
     SWRESET         = $12
 
@@ -53,11 +53,11 @@ CON
 
     VCI_DET         = $15
 
-    TEMPSENS_CTRL_W = $1A
+    TEMP_CTRL_W     = $1A
 
-    TEMPSENS_CTRL_R = $1B
+    TEMP_CTRL_R     = $1B
 
-    TEMPSENS_CMD_W  = $1C
+    TEMP_CMD_W      = $1C
 
     MASTER_ACT      = $20
 

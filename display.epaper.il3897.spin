@@ -366,6 +366,7 @@ PUB DisplayPos(x, y) | tmp
 
 PUB DisplayReady{}: flag
 ' Flag indicating display is ready to accept commands
+'   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
     return (ina[_BUSY] == 0)
 
 PUB DispUpdateCtrl2{} | tmp
@@ -506,7 +507,6 @@ PUB Reset{}
 PUB Update{}
 ' Send the draw buffer to the display
     writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
-
     dispupdatectrl2{}
     masteract{}
     writereg(core#NOOP, 0, 0)
