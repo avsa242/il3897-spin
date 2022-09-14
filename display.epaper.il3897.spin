@@ -5,7 +5,7 @@
     Description: Driver for IL3897/SSD1675 AM E-Paper display controller
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Sep 6, 2022
+    Updated Sep 14, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -593,6 +593,20 @@ PUB writelut(ptr_lut)
 '   NOTE: The data pointed to must be exactly 70 bytes
     writereg(core#WR_LUT, 70, ptr_lut)
 
+CON
+
+    CMD     = 0
+    DATA    = 1
+
+PRI command(c)
+' Issue command without parameters to display
+    case c
+        core#SWRESET, core#MASTER_ACT, core#NOOP:
+            outa[_DC] := CMD
+            outa[_CS] := 0
+            spi.wr_byte(c)
+            outa[_CS] := 1
+
 #ifndef GFX_DIRECT
 PRI memfill(xs, ys, val, count)
 ' Fill region of display buffer memory
@@ -606,27 +620,21 @@ PRI writereg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
         core#WR_RAM_BW:
-            outa[_DC] := 0
+            outa[_DC] := CMD
             outa[_CS] := 0
             spi.wr_byte(reg_nr)
-            outa[_DC] := 1
+            outa[_DC] := DATA
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
-            outa[_CS] := 1
-            return
-        core#SWRESET, core#DISP_UP_CTRL2, core#MASTER_ACT, core#NOOP:
-            outa[_DC] := 0
-            outa[_CS] := 0
-            spi.wr_byte(reg_nr)
             outa[_CS] := 1
             return
         $01, $03, $04, $0C, $0F, $10, $11, $14, $15, $1A, $1C, {
 }       $26, $28, $29, $2C, $31, $32, $3A..$3C, $41, $44..$47, $4E, $4F, $74, {
 }       $7E, $7F:
-            outa[_DC] := 0
+            outa[_DC] := CMD
             outa[_CS] := 0
             spi.wr_byte(reg_nr)
 
-            outa[_DC] := 1
+            outa[_DC] := DATA
             spi.wrblock_lsbf(ptr_buff, nr_bytes)
             outa[_CS] := 1
         other:
