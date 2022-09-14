@@ -2,8 +2,7 @@
     --------------------------------------------
     Filename: display.epaper.il3897.spin
     Author: Jesse Burt
-    Description: Driver for IL3897/SSD1675 AM E-Paper display
-        controller
+    Description: Driver for IL3897/SSD1675 AM E-Paper display controller
     Copyright (c) 2022
     Started Feb 21, 2021
     Updated Sep 6, 2022
@@ -166,7 +165,7 @@ PUB preset_2_13_bw{}
     bordergstrans(LUT0)
 
     vcomvoltage(2_125)
-    gatevoltage(19_000)
+    gatehighvoltage(19_000)
     vsh1voltage(15_000)
     vsh2voltage(5_000)
     vslvoltage(-15_000)
@@ -398,15 +397,7 @@ PUB gatefirstchan(ch): curr_ch
         _drv_out_ctrl[2] := ch
         writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB gatelinewidth(ln_wid)
-
-    writereg(core#GATE_LN_WID, 1, @ln_wid)
-
-PUB gatestartpos(row)
-
-    writereg(core#GATE_ST_POS, 2, @row)
-
-PUB gatevoltage(lvl): curr_lvl
+PUB gatehighvoltage(lvl): curr_lvl
 ' Set gate driving voltage (VGH), in millivolts
 '   Valid values: 10_000..21_000 (rounded to increments of 500mV)
 '   Any other value returns the current (cached) setting
@@ -422,6 +413,14 @@ PUB gatevoltage(lvl): curr_lvl
     else
         _gate_drv_volt := lvl
         writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
+
+PUB gatelinewidth(ln_wid)
+
+    writereg(core#GATE_LN_WID, 1, @ln_wid)
+
+PUB gatestartpos(row)
+
+    writereg(core#GATE_ST_POS, 2, @row)
 
 PUB interlaced(state): curr_state
 ' Alternate direction of every other display line
