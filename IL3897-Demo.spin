@@ -5,7 +5,7 @@
     Description: Demo of the IL3897 driver
     Copyright (c) 2022
     Started Feb 21, 2021
-    Updated Jan 30, 2022
+    Updated Oct 5, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -58,7 +58,7 @@ PUB main{} | i
 
     epaper.preset_2_13_bw{}                     ' set presets for 2.13" BW
 
-    repeat until epaper.displayready{}          ' wait for display to be ready
+    repeat until epaper.disp_rdy{}              ' wait for display to be ready
 
     epaper.bgcolor(epaper#WHITE)                ' set BG color for text and
     epaper.clear{}                              '   Clear()
@@ -77,7 +77,7 @@ PUB main{} | i
     hrule{}                                     ' draw rulers at screen edges
     vrule{}
 
-    epaper.update{}                             ' update the display
+    epaper.show{}                               ' update the display
 
     repeat
 
