@@ -5,7 +5,7 @@
     Description: Demo of the IL3897 driver (P2 version)
     Copyright (c) 2022
     Started Apr 4, 2021
-    Updated Oct 5, 2022
+    Updated Oct 16, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -44,9 +44,8 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.p2eval"
+    cfg     : "boardcfg.p2eval"
     ser     : "com.serial.terminal.ansi"
-    time    : "time"
     epaper  : "display.epaper.il3897"
     fnt     : "font.5x8"
 
@@ -112,7 +111,7 @@ PUB Setup()
     if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, SCK_FREQ, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("IL3897 driver started"))
         epaper.fontscale(1)
-        epaper.fontaddress(fnt.baseaddr())
+        epaper.fontaddress(fnt.ptr())
         epaper.fontsize(6, 8)
     else
         ser.strln(string("IL3897 driver failed to start - halting"))

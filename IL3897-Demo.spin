@@ -42,7 +42,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.boardcfg.flip"
+    cfg     : "boardcfg.flip"
     ser     : "com.serial.terminal.ansi"
     time    : "time"
     epaper  : "display.epaper.il3897"
@@ -110,7 +110,7 @@ PUB setup{}
     if epaper.startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, WIDTH, HEIGHT, @_framebuff)
         ser.strln(string("IL3897 driver started"))
         epaper.fontscale(1)
-        epaper.fontaddress(fnt.baseaddr{})
+        epaper.fontaddress(fnt.ptr{})
         epaper.fontsize(6, 8)
     else
         ser.strln(string("IL3897 driver failed to start - halting"))
