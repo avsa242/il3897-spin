@@ -14,12 +14,12 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for IL3897 E-In
 P1/SPIN1:
 * spin-standard-library
 * 1 additional core/cog for the PASM SPI engine
-* lib.gfx.bitmap.spin (provided by spin-standard-library)
+* graphics.common.spinh (provided by spin-standard-library)
 
 P2/SPIN2:
 * p2-spin-standard-library
 * 250MHz sys clock, for 20MHz SPI bus speed (limit at 160MHz default is 15MHz
-* lib.gfx.bitmap.spin2 (provided by spin-standard-library)
+* graphics.common.spin2h (provided by spin-standard-library)
 
 ## Compiler Compatibility
 
