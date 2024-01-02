@@ -7,7 +7,7 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for IL3897 E-In
 
 ## Salient Features
 
-* P1: SPI connection at ~28kHz (bytecode SPI engine), 20MHz
+* P1: SPI connection at ~28kHz (bytecode SPI engine), 20MHz (PASM-based engine)
 * P2: SPI connection at up to 20MHz
 
 ## Requirements
@@ -26,10 +26,10 @@ P2/SPIN2:
 
 | Processor | Language | Compiler               | Backend      | Status                |
 |-----------|----------|------------------------|--------------|-----------------------|
-| P1        | SPIN1    | FlexSpin (6.5.0)       | Bytecode     | OK                    |
-| P1        | SPIN1    | FlexSpin (6.5.0)       | Native/PASM  | OK                    |
-| P2        | SPIN2    | FlexSpin (6.5.0)       | NuCode       | FTBFS                 |
-| P2        | SPIN2    | FlexSpin (6.5.0)       | Native/PASM2 | OK                    |
+| P1        | SPIN1    | FlexSpin (6.8.0)       | Bytecode     | OK                    |
+| P1        | SPIN1    | FlexSpin (6.8.0)       | Native/PASM  | OK                    |
+| P2        | SPIN2    | FlexSpin (6.8.0)       | NuCode       | OK (Untested)         |
+| P2        | SPIN2    | FlexSpin (6.8.0)       | Native/PASM2 | OK                    |
 
 (other versions or toolchains not listed are __not supported__, and _may or may not_ work)
 
@@ -40,6 +40,7 @@ P2/SPIN2:
 
 ## Limitations
 
-* Very early in development - may malfunction, or outright fail to build
 * Tri-color panels (e.g., with additional red channel) aren't supported
+* Horizontal mirroring not supported
+* Rotation not supported
 
