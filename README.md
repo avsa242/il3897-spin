@@ -19,7 +19,7 @@ P1/SPIN1:
 
 P2/SPIN2:
 * p2-spin-standard-library
-* 250MHz sys clock, for 20MHz SPI bus speed (limit at 160MHz default is 15MHz
+* 250MHz sys clock, for 20MHz SPI bus speed (limit at 180MHz default is 13MHz)
 * graphics.common.spin2h (provided by spin-standard-library)
 
 ## Compiler Compatibility
