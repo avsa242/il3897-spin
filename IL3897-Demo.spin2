@@ -1,12 +1,12 @@
 {
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
     Filename:       Il3897-Demo.spin2
     Description:    IL3897-specific setup for E-Ink/E-Paper graphics demo
     Author:         Jesse Burt
     Started:        Feb 21, 2021
-    Updated:        Jan 28, 2024
+    Updated:        Aug 16, 2024
     Copyright (c) 2024 - See end of file for terms of use.
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 }
 
 #include "core.con.click.spin2"
@@ -24,13 +24,13 @@ CON
 OBJ
 
     cfg:    "boardcfg.p2eval"
-    ser:    "com.serial.terminal.ansi" | SER_BAUD=2_000_000
     fnt:    "font.5x8"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=2_000_000
     epaper: "display.epaper.il3897" | WIDTH=122, HEIGHT=250, ...
                                         CS=21, SCK=20, MOSI=19, DC=18, RST=17, BUSY=16, ...
                                         SPI_FREQ=10_000_000
-    ' NOTE: To use SPI_FREQ > 15MHz, _clkfreq needs to be
-    '   increased to 250MHz or higher.
+    ' NOTE: To use SPI_FREQ > 13MHz, _clkfreq needs to be
+    '   increased to 250MHz or higher (default is 180MHz).
 
     { uncomment below to use MikroE Click adaptor }
 '    epaper: "display.epaper.il3897" | WIDTH=122, HEIGHT=250, ...
@@ -63,7 +63,7 @@ PUB main()
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: core.con.il3897.spin
-    Author: Jesse Burt
-    Description: IL3897-specific Low-level constants
-    Copyright (c) 2022
-    Started Feb 21, 2021
-    Updated Jan 21, 2022
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       core.con.il3897.spin
+    Description:    IL3897-specific constants
+    Author:         Jesse Burt
+    Started:        Feb 21, 2021
+    Updated:        Aug 16, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -131,12 +130,14 @@ CON
 
     NOOP            = $FF
 
-PUB null{}
+
+PUB null()
 ' This is not a top-level object
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

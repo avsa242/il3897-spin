@@ -1,35 +1,35 @@
 {
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
     Filename:       Il3897-Demo.spin
     Description:    IL3897-specific setup for E-Ink/E-Paper graphics demo
     Author:         Jesse Burt
     Started:        Feb 21, 2021
-    Updated:        Jan 28, 2024
+    Updated:        Aug 16, 2024
     Copyright (c) 2024 - See end of file for terms of use.
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 }
 
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = cfg._clkmode
+    _xinfreq    = cfg._xinfreq
 
 
 OBJ
 
     cfg:    "boardcfg.flip"
-    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     time:   "time"
     fnt:    "font.5x8"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_200
     epaper: "display.epaper.il3897" | WIDTH=122, HEIGHT=250, ...
                                         CS=16, SCK=17, MOSI=18, DC=19, RST=20, BUSY=21
 
 
-PUB main{}
+PUB main()
 
     ser.start()
     time.msleep(30)
-    ser.clear{}
+    ser.clear()
     ser.strln(@"Serial terminal started")
 
     if ( epaper.start() )
@@ -39,9 +39,9 @@ PUB main{}
         ser.strln(@"E-ink driver failed to start - halting")
         repeat
 
-    epaper.preset_2p13_bw{}
+    epaper.preset_2p13_bw()
 
-    demo{}                                      ' start demo
+    demo()                                      ' start demo
     repeat
 
 { demo routines (common to all display types) included here }
@@ -50,7 +50,7 @@ PUB main{}
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

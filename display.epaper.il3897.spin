@@ -1,12 +1,12 @@
 {
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
     Filename:       display.epaper.il3897.spin
     Description:    Driver for IL3897/SSD1675 active-matrix E-Paper display controller
     Author:         Jesse Burt
     Started:        Feb 21, 2021
     Updated:        Jan 28, 2024
     Copyright (c) 2024 - See end of file for terms of use.
----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
 }
 
 #define 1BPP
@@ -111,26 +111,44 @@ VAR
     byte _gate_drv_volt
     byte _framebuffer[BUFF_SZ]
 
+
 OBJ
 
-    spi : "com.spi.20mhz"                       ' PASM SPI engine
-    core: "core.con.il3897"                     ' HW-specific constants
-    time: "time"                                ' Basic timing functions
+    spi:    "com.spi.20mhz"                     ' PASM SPI engine
+    core:   "core.con.il3897"                   ' HW-specific constants
+    time:   "time"                              ' Basic timing functions
 
-PUB null{}
+
+PUB null()
 ' This is not a top-level object
+
 
 PUB start(): status
 ' Start the driver using default I/O settings
     return startx(CS, SCK, MOSI, RST, DC, BUSY, WIDTH, HEIGHT, @_framebuffer)
 
+
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
 ' Start using custom IO pins
+'   CS_PIN:     chip select
+'   SCK_PIN:    serial clock
+'   MOSI_PIN:   master-out slave-in
+'   RST_PIN:    reset (optional)
+'       (Specify something invalid to ignore (e.g., -1). You must then either connect it to
+'       the display's supply voltage, or you could connect it to the Propeller's reset pin, which
+'       will reset the display every time the Propeller is reset or program code is loaded)
+'   DC_PIN:     data/command (sometimes called 'register select')
+'   BUSY_PIN:   display busy state
+'   DISP_W:     display width, in pixels
+'   DISP_H:     display height, in pixels
+'   ptr_fb:     pointer to display/frame buffer
+
+'   Returns: cog ID + 1 of the SPI engine
     if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
         lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and ...
         lookdown(DC_PIN: 0..31) and lookdown(BUSY_PIN: 0..31) )
-        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core#SPI_MODE))
-            time.usleep(core#T_POR)             ' wait for device startup
+        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE))
+            time.usleep(core.T_POR)             ' wait for device startup
             dira[DC_PIN] := 1
             dira[BUSY_PIN] := 0
             outa[CS_PIN] := 1
@@ -152,9 +170,10 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, RST_PIN, DC_PIN, BUSY_PIN, DISP_W, DISP_H,
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB stop{}
+
+PUB stop()
 ' Stop SPI engine, float I/O pins, and clear variable space
-    spi.deinit{}
+    spi.deinit()
     dira[_CS] := 0
     dira[_DC] := 0
     dira[_RST] := 0
@@ -163,18 +182,20 @@ PUB stop{}
     wordfill(@_buff_sz, 0, 2)
     bytefill(@_disp_width, 0, 4)
 
-PUB defaults{}
+
+PUB defaults()
 ' Factory default settings
-    reset{}
+    reset()
 
-PUB preset_2p13_bw{}
+
+PUB preset_2p13_bw()
 ' Presets for 2.13" BW E-ink panel, 122x250
-    repeat until disp_rdy{}
-    reset{}
-    repeat until disp_rdy{}
+    repeat until disp_rdy()
+    reset()
+    repeat until disp_rdy()
 
-    analog_blk_ctrl{}
-    dig_blk_ctrl{}
+    analog_blk_ctrl()
+    dig_blk_ctrl()
     gate_start_pos(0)
     disp_lines(250)
     gate_first_chan(0)
@@ -200,7 +221,8 @@ PUB preset_2p13_bw{}
     gate_line_width(_lut_2p13_bw_full[75])
     wr_lut(@_lut_2p13_bw_full)
     disp_pos(0, 0)
-    repeat until disp_rdy{}
+    repeat until disp_rdy()
+
 
 PUB addr_ctr_mode(mode): curr_mode
 ' Set address increment/decrement mode
@@ -214,14 +236,15 @@ PUB addr_ctr_mode(mode): curr_mode
     case mode
         YD_XD, YD_XI, YI_XD, YI_XI:
         other:
-            return (curr_mode & core#ID_BITS)
+            return (curr_mode & core.ID_BITS)
 
-    mode := ((curr_mode & core#ID_MASK) | mode)
+    mode := ((curr_mode & core.ID_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _data_entr_mode := mode
-    writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
+    writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
+
 
 PUB addr_mode(mode): curr_mode
 ' Set display addressing mode
@@ -232,21 +255,23 @@ PUB addr_mode(mode): curr_mode
     curr_mode := _data_entr_mode
     case mode
         HORIZ, VERT:
-            mode <<= core#AM
+            mode <<= core.AM
         other:
-            return ((curr_mode >> core#AM) & 1)
+            return ((curr_mode >> core.AM) & 1)
 
-    mode := ((curr_mode & core#AM_MASK) | mode)
+    mode := ((curr_mode & core.AM_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _data_entr_mode := mode
-    writereg(core#DATA_ENT_MD, 1, @_data_entr_mode)
+    writereg(core.DATA_ENT_MD, 1, @_data_entr_mode)
 
-PUB analog_blk_ctrl{} | tmp
+
+PUB analog_blk_ctrl() | tmp
 ' Analog Block control
     tmp := $54
-    writereg(core#ANLG_BLK_CTRL, 1, @tmp)
+    writereg(core.ANLG_BLK_CTRL, 1, @tmp)
+
 
 PUB border_gst_mode(mode): curr_mode
 ' Set border waveform GS transition mode
@@ -257,16 +282,17 @@ PUB border_gst_mode(mode): curr_mode
     curr_mode := _brd_wvf_ctrl
     case mode
         FLWLUT_VCOMRED, FLWLUT:
-            mode <<= core#GSTRC
+            mode <<= core.GSTRC
         other:
-            return ((curr_mode >> core#GSTRC) & 1)
+            return ((curr_mode >> core.GSTRC) & 1)
 
-    mode := ((curr_mode & core#GSTRC_MASK) | mode)
+    mode := ((curr_mode & core.GSTRC_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _brd_wvf_ctrl := mode
-    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+    writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
 
 PUB border_gst(trans): curr_trans
 ' Set border waveform transition
@@ -274,14 +300,15 @@ PUB border_gst(trans): curr_trans
     case trans
         LUT0..LUT3:
         other:
-            return (curr_trans & core#GSTRS_BITS)
+            return (curr_trans & core.GSTRS_BITS)
 
-    trans := ((curr_trans & core#GSTRS_MASK) | trans)
+    trans := ((curr_trans & core.GSTRS_MASK) | trans)
     if (trans == curr_trans)                    ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _brd_wvf_ctrl := trans
-    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+    writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
 
 PUB border_mode(mode): curr_mode
 ' Set border waveform VBD option
@@ -294,16 +321,17 @@ PUB border_mode(mode): curr_mode
     curr_mode := _brd_wvf_ctrl
     case mode
         GS_TRANS, FIXEDLEV, VCOM, HIZ:
-            mode <<= core#VBDOPT
+            mode <<= core.VBDOPT
         other:
-            return ((curr_mode >> core#VBDOPT) & core#VBDOPT_BITS)
+            return ((curr_mode >> core.VBDOPT) & core.VBDOPT_BITS)
 
-    mode := ((curr_mode & core#VBDOPT_MASK) | mode)
+    mode := ((curr_mode & core.VBDOPT_MASK) | mode)
     if (mode == curr_mode)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _brd_wvf_ctrl := mode
-    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+    writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
 
 PUB border_vbd_lev(level): curr_lev
 ' Set border fixed VBD level
@@ -316,27 +344,30 @@ PUB border_vbd_lev(level): curr_lev
     curr_lev := _brd_wvf_ctrl
     case level
         BRD_VSS, BRD_VSH1, BRD_VSL, BRD_VSH2:
-            level <<= core#VBDLVL
+            level <<= core.VBDLVL
         other:
-            return ((curr_lev >> core#VBDLVL) & core#VBDLVL_BITS)
+            return ((curr_lev >> core.VBDLVL) & core.VBDLVL_BITS)
 
-    level := ((curr_lev & core#VBDLVL_MASK) | level)
+    level := ((curr_lev & core.VBDLVL_MASK) | level)
     if (level == curr_lev)                      ' no change to shadow reg;
         return                                  ' don't bother writing
     else
         _brd_wvf_ctrl := level
-    writereg(core#BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+    writereg(core.BRD_WV_CTRL, 1, @_brd_wvf_ctrl)
+
 
 #ifndef GFX_DIRECT
-PUB clear{}
+PUB clear()
 ' Clear the display buffer
     bytefill(_ptr_drawbuffer, _bgcolor, _buff_sz)
 #endif
 
-PUB dig_blk_ctrl{} | tmp
+
+PUB dig_blk_ctrl() | tmp
 ' Digital Block control
     tmp := $3b
-    writereg(core#DIGI_BLK_CTRL, 1, @tmp)
+    writereg(core.DIGI_BLK_CTRL, 1, @tmp)
+
 
 PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
 ' Set drawable display region for subsequent drawing operations
@@ -351,8 +382,9 @@ PUB draw_area(sx, sy, ex, ey) | tmpx, tmpy
     tmpy.byte[2] := ey.byte[0]
     tmpy.byte[3] := ey.byte[1]
 
-    writereg(core#RAM_X_WIND, 2, @tmpx)
-    writereg(core#RAM_Y_WIND, 4, @tmpy)
+    writereg(core.RAM_X_WIND, 2, @tmpx)
+    writereg(core.RAM_Y_WIND, 4, @tmpy)
+
 
 PUB disp_lines(lines): curr_lines
 ' Set display visible lines
@@ -371,29 +403,34 @@ PUB disp_lines(lines): curr_lines
     else
         _drv_out_ctrl[0] := lines.byte[0]
         _drv_out_ctrl[1] := lines.byte[1]
-        writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+
 
 PUB disp_pos(x, y) | tmp
 ' Set position for subsequent drawing operations
 '   Valid values:
 '       x: 0..159
 '       y: 0..295
-    writereg(core#RAM_X, 1, @x)
-    writereg(core#RAM_Y, 2, @y)
+    writereg(core.RAM_X, 1, @x)
+    writereg(core.RAM_Y, 2, @y)
 
-PUB disp_rdy{}: flag
+
+PUB disp_rdy(): flag
 ' Flag indicating display is ready to accept commands
 '   Returns: TRUE (-1) if display is ready, FALSE (0) otherwise
     return (ina[_BUSY] == 0)
 
-PUB disp_upd_ctrl2{} | tmp
+
+PUB disp_upd_ctrl2() | tmp
 
     tmp := $c7
-    writereg(core#DISP_UP_CTRL2, 1, 0)
+    writereg(core.DISP_UP_CTRL2, 1, 0)
+
 
 PUB dummy_line_per(ln_per)
 
-    writereg(core#DUMMY_LN_PER, 1, @ln_per)
+    writereg(core.DUMMY_LN_PER, 1, @ln_per)
+
 
 PUB gate_first_chan(ch): curr_ch
 ' Set first output gate
@@ -404,16 +441,17 @@ PUB gate_first_chan(ch): curr_ch
     curr_ch := _drv_out_ctrl[2]
     case ch
         0, 1:
-            ch <<= core#GD
+            ch <<= core.GD
         other:
-            return ((curr_ch >> core#GD) & 1)
+            return ((curr_ch >> core.GD) & 1)
 
-    ch := ((curr_ch & core#GD_MASK) | ch)
+    ch := ((curr_ch & core.GD_MASK) | ch)
     if (ch == curr_ch)
         return
     else
         _drv_out_ctrl[2] := ch
-        writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+
 
 PUB gate_high_voltage(lvl): curr_lvl
 ' Set gate driving voltage (VGH), in millivolts
@@ -432,13 +470,16 @@ PUB gate_high_voltage(lvl): curr_lvl
         _gate_drv_volt := lvl
         writereg(core.GATE_DRV_CTRL, 1, @_gate_drv_volt)
 
-PUB gate_line_width(ln_wid)
 
-    writereg(core#GATE_LN_WID, 1, @ln_wid)
+PUB gate_line_width(ln_wid)
+' Set gate line width
+    writereg(core.GATE_LN_WID, 1, @ln_wid)
+
 
 PUB gate_start_pos(row)
+' Set the gate start position
+    writereg(core.GATE_ST_POS, 2, @row)
 
-    writereg(core#GATE_ST_POS, 2, @row)
 
 PUB interlace_ena(state): curr_state
 ' Alternate direction of every other display line
@@ -447,20 +488,22 @@ PUB interlace_ena(state): curr_state
     curr_state := _drv_out_ctrl[2]
     case ||(state)
         0, 1:
-            state := ||(state) << core#SM
+            state := ||(state) << core.SM
         other:
-            return (((curr_state >> core#SM) & 1) == 1)
+            return (((curr_state >> core.SM) & 1) == 1)
 
-    state := ((curr_state & core#SM_MASK) | state)
+    state := ((curr_state & core.SM_MASK) | state)
     if (state == curr_state)
         return
     else
         _drv_out_ctrl[2] := state
-        writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
-PUB master_act{}
 
-    command(core#MASTER_ACT)
+PUB master_act()
+' Activate display update sequence
+    command(core.MASTER_ACT)
+
 
 PUB mirror_v(state): curr_state  'XXX not functional yet
 ' Mirror display, vertically
@@ -469,16 +512,17 @@ PUB mirror_v(state): curr_state  'XXX not functional yet
     curr_state := _drv_out_ctrl[2]
     case ||(state)
         0, 1:
-            state := ||(state) << core#TB
+            state := ||(state) << core.TB
         other:
-            return (((curr_state >> core#TB) & 1) == 1)
+            return (((curr_state >> core.TB) & 1) == 1)
 
-    state := ((curr_state & core#TB_MASK) | state)
+    state := ((curr_state & core.TB_MASK) | state)
     if (state == curr_state)
         return
     else
         _drv_out_ctrl[2] := state
-        writereg(core#DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+        writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
+
 
 PUB plot(x, y, color)
 ' Plot pixel at (x, y) in color
@@ -500,6 +544,7 @@ PUB plot(x, y, color)
             return
 #endif
 
+
 #ifndef GFX_DIRECT
 PUB point(x, y): pix_clr
 ' Get color of pixel at x, y
@@ -509,7 +554,8 @@ PUB point(x, y): pix_clr
     return byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3]
 #endif
 
-PUB reset{}
+
+PUB reset()
 ' Reset the device
     if (lookdown(_RST: 0..31))                  ' only touch the reset pin
         outa[_RST] := 1                         ' if it's defined
@@ -519,18 +565,20 @@ PUB reset{}
         outa[_RST] := 1
         time.msleep(200)
     else                                        ' otherwise, just perform
-        command(core#SWRESET)                   '   soft-reset
-        time.usleep(core#T_POR)
-    repeat until disp_rdy{}
+        command(core.SWRESET)                   '   soft-reset
+        time.usleep(core.T_POR)
+    repeat until disp_rdy()
 
-PUB show{}
+
+PUB show()
 ' Send the draw buffer to the display
-    writereg(core#WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
-    disp_upd_ctrl2{}
-    master_act{}
-    command(core#NOOP)
+    writereg(core.WR_RAM_BW, _buff_sz, _ptr_drawbuffer)
+    disp_upd_ctrl2()
+    master_act()
+    command(core.NOOP)
 
-    repeat until disp_rdy{}
+    repeat until disp_rdy()
+
 
 PUB vcom_voltage(volts) | tmp
 ' Set VCOM voltage level, in millivolts
@@ -539,7 +587,8 @@ PUB vcom_voltage(volts) | tmp
             volts := volts / 25
         other:
             return
-    writereg(core#WR_VCOM, 1, @volts)
+    writereg(core.WR_VCOM, 1, @volts)
+
 
 PUB vsh1_voltage(lvl): curr_lvl
 ' Set source driving voltage (VSH1), in millivolts
@@ -564,7 +613,8 @@ PUB vsh1_voltage(lvl): curr_lvl
         return                                  '   don't bother writing
     else
         _src_drv_volt[VSH1] := lvl
-        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
+        writereg(core.SRC_DRV_CTRL, 3, @_src_drv_volt)
+
 
 PUB vsh2_voltage(lvl): curr_lvl
 ' Set source driving voltage (VSH2), in millivolts
@@ -589,7 +639,8 @@ PUB vsh2_voltage(lvl): curr_lvl
         return                                  '   don't bother writing
     else
         _src_drv_volt[VSH2] := lvl
-        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
+        writereg(core.SRC_DRV_CTRL, 3, @_src_drv_volt)
+
 
 PUB vsl_voltage(lvl): curr_lvl
 ' Set source driving voltage (VSL), in millivolts
@@ -606,26 +657,30 @@ PUB vsl_voltage(lvl): curr_lvl
         return                                  '   don't bother writing
     else
         _src_drv_volt[VSL] := lvl
-        writereg(core#SRC_DRV_CTRL, 3, @_src_drv_volt)
+        writereg(core.SRC_DRV_CTRL, 3, @_src_drv_volt)
+
 
 PUB wr_lut(ptr_lut)
 ' Write display waveform lookup table
 '   NOTE: The data pointed to must be exactly 70 bytes
-    writereg(core#WR_LUT, 70, ptr_lut)
+    writereg(core.WR_LUT, 70, ptr_lut)
+
 
 CON
 
     CMD     = 0
     DATA    = 1
 
+
 PRI command(c)
 ' Issue command without parameters to display
     case c
-        core#SWRESET, core#MASTER_ACT, core#NOOP:
+        core.SWRESET, core.MASTER_ACT, core.NOOP:
             outa[_DC] := CMD
             outa[_CS] := 0
             spi.wr_byte(c)
             outa[_CS] := 1
+
 
 #ifndef GFX_DIRECT
 PRI memfill(xs, ys, val, count)
@@ -636,10 +691,11 @@ PRI memfill(xs, ys, val, count)
     bytefill(_ptr_drawbuffer + (xs + (ys * _bytesperln)), val, count)
 #endif
 
+
 PRI writereg(reg_nr, nr_bytes, ptr_buff)
 ' Write nr_bytes to the device from ptr_buff
     case reg_nr
-        core#WR_RAM_BW:
+        core.WR_RAM_BW:
             outa[_DC] := CMD
             outa[_CS] := 0
             spi.wr_byte(reg_nr)
@@ -700,6 +756,7 @@ DAT
     byte    $00, $00, $00, $00, $00             ' TP6 A~D RP6
 
     byte    $15, $41, $A8, $32, $30, $0A        ' GDC, SDC[0..2], DL, GT
+
 
 DAT
 {
