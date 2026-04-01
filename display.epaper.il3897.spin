@@ -4,8 +4,8 @@
     Description:    Driver for IL3897/SSD1675 active-matrix E-Paper display controller
     Author:         Jesse Burt
     Started:        Feb 21, 2021
-    Updated:        Feb 7, 2025
-    Copyright (c) 2025 - See end of file for terms of use.
+    Updated:        Apr 1, 2026
+    Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
 
@@ -125,7 +125,7 @@ PUB null()
 
 PUB start(): status
 ' Start the driver using default I/O settings
-    return startx(CS, SCK, MOSI, RST, DC, BUSY, WIDTH, HEIGHT, @_framebuffer)
+    return startx(CS, SCK, MOSI, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuffer)
 
 
 PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
@@ -155,7 +155,9 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
             dira[CS_PIN] := 1
 
             _CS := CS_PIN
-            longmove(@_RST, @RST_PIN, 3)
+            _DC := DC_PIN
+            _RST := RST_PIN
+            _BUSY := BUSY_PIN
             set_address(ptr_fb)
             if (DISP_W // 8)               ' round up width to next
                 repeat                          ' multiple of 8 so alignment
@@ -760,7 +762,7 @@ DAT
 
 DAT
 {
-Copyright 2025 Jesse Burt
+Copyright 2026 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
