@@ -4,8 +4,8 @@
     Description:    IL3897-specific setup for E-Ink/E-Paper graphics demo
     Author:         Jesse Burt
     Started:        Feb 21, 2021
-    Updated:        Aug 16, 2024
-    Copyright (c) 2024 - See end of file for terms of use.
+    Updated:        Apr 2, 2026
+    Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
 
@@ -13,8 +13,8 @@
 
 CON
 
-    _clkfreq    = cfg._clkfreq_def
-    _xtlfreq    = cfg._xtlfreq
+    _clkfreq    = 180_000_000
+    _xtlfreq    = 20_000_000
 
 ' -- User-modifiable constants
     { base pin for MikroE click adaptor board, if used }
@@ -23,12 +23,16 @@ CON
 
 OBJ
 
-    cfg:    "boardcfg.p2eval"
-    fnt:    "font.5x8"
     ser:    "com.serial.terminal.ansi" | SER_BAUD=2_000_000
     epaper: "display.epaper.il3897" | WIDTH=122, HEIGHT=250, ...
                                         CS=21, SCK=20, MOSI=19, DC=18, RST=17, BUSY=16, ...
                                         SPI_FREQ=10_000_000
+    fnt:    "font.5x8"
+
+    ' NOTE: The WIDTH and HEIGHT are the panel's physical size and generally don't need to be
+    '   changed. These aren't used to change the display orientation/rotation. That can be
+    '   set using the set_rotation() method shown below.
+
     ' NOTE: To use SPI_FREQ > 13MHz, _clkfreq needs to be
     '   increased to 250MHz or higher (default is 180MHz).
 
@@ -53,17 +57,70 @@ PUB main()
         repeat
 
     epaper.preset_2p13_bw()
+    epaper.set_rotation(0)                      ' set display rotation to 0 (default), 90, 180, 270
 
     demo()                                      ' start demo
     repeat
 
-{ demo routines (common to all display types) included here }
-#include "EInkDemo-common.spin2h"
+
+DAT
+
+    _test_txt byte "HELLO WORLD", 0
+
+
+PUB demo() | i
+
+    repeat
+    until epaper.disp_rdy()              ' Wait for display to be ready
+
+    epaper.bgcolor(epaper.WHITE)                ' set BG color for text, and
+    epaper.clear()                              '   also Clear() color
+    epaper.fgcolor(epaper.BLACK)                ' set FG color for text
+    epaper.box(0, 0, epaper._disp_xmax, epaper._disp_ymax, 0, FALSE)      ' draw box full-screen size
+
+    { find center X pos_xy for test text and draw it }
+    epaper.pos_xy((epaper.textcols() / 2)-(strsize(@_test_txt) / 2), 2)
+    epaper.str(@_test_txt)
+
+    { diagonal lines }
+    epaper.line(0, 0, epaper._disp_xmax, epaper._disp_ymax, 0)
+    epaper.line(epaper._disp_xmax, 0, 0, epaper._disp_ymax, 0)
+
+    { concentric circles }
+    repeat i from 0 to (epaper._disp_width/2) step 10
+        epaper.circle(epaper._disp_width/2, epaper._disp_height/2, i, 0, false)
+
+    hrule()                                     ' draw rulers at screen edges
+    vrule()
+
+    epaper.show()                               ' Update the display
+
+
+PUB hrule() | x, grad_len
+' Draw a simple rule along the x-axis
+    grad_len := 5
+
+    repeat x from 0 to epaper._disp_xmax step 4
+        ifnot (x // 8)                          ' minor ticks
+            epaper.line(x, 0, x, grad_len, epaper.INVERT)
+        else                                    ' major ticks
+            epaper.line(x, 0, x, grad_len*2, epaper.INVERT)
+
+
+PUB vrule() | y, grad_len
+' Draw a simple rule along the y-axis
+    grad_len := 5
+
+    repeat y from 0 to epaper._disp_ymax step 4
+        ifnot (y // 8)
+            epaper.line(0, y, grad_len, y, epaper.INVERT)
+        else
+            epaper.line(0, y, grad_len*2, y, epaper.INVERT)
 
 
 DAT
 {
-Copyright 2024 Jesse Burt
+Copyright 2026 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

@@ -4,7 +4,7 @@
     Description:    Driver for IL3897/SSD1675 active-matrix E-Paper display controller
     Author:         Jesse Burt
     Started:        Feb 21, 2021
-    Updated:        Apr 1, 2026
+    Updated:        Apr 2, 2026
     Copyright (c) 2026 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -18,12 +18,16 @@
 
 CON
 
-    { -- default I/O settings; these can be overridden in the parent object }
-    { display dimensions }
+    ' -- default I/O settings; these can be overridden in the parent object
+    ' display dimensions
+    ' NOTE: These are hardware-specific panel dimensions that don't change while the driver is
+    '   running, and generally don't need to be changed from the default below. They don't
+    '   reflect what orientation is being used to draw the display, which can optionally
+    '   be changed at runtime using set_rotation() (see graphics.common.spinh).
     WIDTH           = 128
     HEIGHT          = 296
 
-    { SPI }
+    ' SPI
     CS              = 0
     SCK             = 1
     MOSI            = 2
@@ -32,9 +36,10 @@ CON
     BUSY            = 5
     ' --
 
+    ' automatically computed - do not change
     BPP             = 1                             ' bits per pixel/color depth of the display
     BYTESPERPX      = 1 #> (BPP/8)                  ' limit to minimum of 1
-    BPPDIV          = BYTESPERPX #> (8 / BPP)       ' limit to range BYTESPERPX .. (8/BPP)
+    BPPDIV          = (8 / BPP) #> BYTESPERPX       ' limit to range BYTESPERPX .. (8/BPP)
     BUFF_SZ         = ( (WIDTH+6) * HEIGHT) / BPPDIV
     MAX_COLOR       = (1 << BPP)-1
     XMAX            = WIDTH-1
@@ -123,16 +128,17 @@ PUB null()
 ' This is not a top-level object
 
 
-PUB start(): status
-' Start the driver using default I/O settings
+PUB start(): s
+' Start using default I/O settings
+'   Returns: cog ID + 1 of the SPI engine
     return startx(CS, SCK, MOSI, DC, RST, BUSY, WIDTH, HEIGHT, @_framebuffer)
 
 
-PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb): status
-' Start using custom IO pins
+PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H, ptr_fb=0): s
+' Start using custom I/O pins
 '   CS_PIN:     chip select
-'   SCK_PIN:    serial clock
-'   MOSI_PIN:   master-out slave-in
+'   SCK_PIN:    serial clock (may be labeled 'CLK')
+'   MOSI_PIN:   master-out slave-in (may be labeled 'DIN')
 '   DC_PIN:     data/command (sometimes called 'register select')
 '   RST_PIN:    reset (optional)
 '       (Specify something invalid to ignore (e.g., -1). You must then either connect it to
@@ -141,13 +147,13 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
 '   BUSY_PIN:   display busy state
 '   DISP_W:     display width, in pixels
 '   DISP_H:     display height, in pixels
-'   ptr_fb:     pointer to display/frame buffer
+'   ptr_fb:     pointer to display/frame buffer (optional; default uses the internal framebuffer)
 
 '   Returns: cog ID + 1 of the SPI engine
     if ( lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and ...
         lookdown(MOSI_PIN: 0..31) and lookdown(RST_PIN: 0..31) and ...
         lookdown(DC_PIN: 0..31) and lookdown(BUSY_PIN: 0..31) )
-        if (status := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE))
+        if (s := spi.init(SCK_PIN, MOSI_PIN, -1, core.SPI_MODE))
             time.usleep(core.T_POR)             ' wait for device startup
             dira[DC_PIN] := 1
             dira[BUSY_PIN] := 0
@@ -158,13 +164,12 @@ PUB startx(CS_PIN, SCK_PIN, MOSI_PIN, DC_PIN, RST_PIN, BUSY_PIN, DISP_W, DISP_H,
             _DC := DC_PIN
             _RST := RST_PIN
             _BUSY := BUSY_PIN
-            set_address(ptr_fb)
             if (DISP_W // 8)               ' round up width to next
                 repeat                          ' multiple of 8 so alignment
                     DISP_W++               ' is correct
                 until (DISP_W // 8) == 0
             set_dims(DISP_W, DISP_H)
-            _buff_sz := BUFF_SZ
+            set_address(ptr_fb)
 
             return
     ' if this point is reached, something above failed
@@ -488,9 +493,9 @@ PUB interlace_ena(state): curr_state
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
     curr_state := _drv_out_ctrl[2]
-    case ||(state)
+    case abs(state)
         0, 1:
-            state := ||(state) << core.SM
+            state := abs(state) << core.SM
         other:
             return (((curr_state >> core.SM) & 1) == 1)
 
@@ -512,9 +517,9 @@ PUB mirror_v(state): curr_state  'XXX not functional yet
 '   Valid values: TRUE (-1 or 1), FALSE (0)
 '   Any other value returns the current (cached) setting
     curr_state := _drv_out_ctrl[2]
-    case ||(state)
+    case abs(state)
         0, 1:
-            state := ||(state) << core.TB
+            state := abs(state) << core.TB
         other:
             return (((curr_state >> core.TB) & 1) == 1)
 
@@ -526,25 +531,38 @@ PUB mirror_v(state): curr_state  'XXX not functional yet
         writereg(core.DRV_OUT_CTRL, 3, @_drv_out_ctrl)
 
 
-PUB plot(x, y, color)
-' Plot pixel at (x, y) in color
-    if (x < 0 or x > _disp_xmax) or (y < 0 or y > _disp_ymax)
+PUB plot(x, y, c) | t, o, mask
+' Plot pixel
+'   x, y:   coordinates to draw
+'   c:      pixel color
+    if ( (x < 0) or (x > _disp_xmax) or (y < 0) or (y > _disp_ymax) )
         return                                  ' coords out of bounds, ignore
-#ifdef GFX_DIRECT
-' direct to display
-'   (not implemented)
-#else
-' buffered display
-    case color
-        1:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] |= $80 >> (x & 7)
-        0:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] &= !($80 >> (x & 7))
-        -1:
-            byte[_ptr_drawbuffer][(x + y * _disp_width) >> 3] ^= $80 >> (x & 7)
+
+    case _rotation
+        1:                                      ' 90deg CW
+            t := x
+            x := WIDTH - 1 - y
+            y := t
+        2:                                      ' 180deg
+            x := WIDTH - x - 1
+            y := HEIGHT - y - 1
+        3:                                      ' 270deg
+            t := x
+            x := y
+            y := HEIGHT-1-t
+
+    o := _ptr_drawbuffer + ( (x / 8) + y * ((WIDTH + 7) / 8) )
+    mask := $80 >> (x & 7)
+
+    case c
+        1:                                      ' white
+            byte[o] |= mask
+        0:                                      ' black
+            byte[o] &= !mask
+        -1:                                     ' inverse
+            byte[o] ^= mask
         other:
             return
-#endif
 
 
 #ifndef GFX_DIRECT

@@ -10,6 +10,8 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for IL3897 E-In
 
 * P1: SPI connection at ~28kHz (bytecode SPI engine), 20MHz (PASM-based engine)
 * P2: SPI connection at up to 20MHz
+* Integration with generic bitmap graphics library
+* Display rotation (software)
 
 
 ## Requirements
@@ -18,21 +20,23 @@ P1/SPIN1:
 * spin-standard-library
 * 1 additional core/cog for the PASM SPI engine (none if bytecode engine is used)
 * graphics.common.spinh (provided by spin-standard-library)
+* `(WIDTH * HEIGHT) / 8` bytes of RAM for the display buffer (internal to the driver)
 
 P2/SPIN2:
 * p2-spin-standard-library
 * 250MHz sys clock, for 20MHz SPI bus speed (limit at 180MHz default is 13MHz)
 * graphics.common.spin2h (provided by spin-standard-library)
+* `(WIDTH * HEIGHT) / 8` bytes of RAM for the display buffer (internal to the driver)
 
 
 ## Compiler Compatibility
 
 | Processor | Language | Compiler               | Backend      | Status                |
 |-----------|----------|------------------------|--------------|-----------------------|
-| P1        | SPIN1    | FlexSpin (6.9.4)       | Bytecode     | OK                    |
-| P1        | SPIN1    | FlexSpin (6.9.4)       | Native/PASM  | OK                    |
-| P2        | SPIN2    | FlexSpin (6.9.4)       | NuCode       | OK (Untested)         |
-| P2        | SPIN2    | FlexSpin (6.9.4)       | Native/PASM2 | OK                    |
+| P1        | SPIN1    | FlexSpin (7.6.5)       | Bytecode     | OK                    |
+| P1        | SPIN1    | FlexSpin (7.6.5)       | Native/PASM  | OK                    |
+| P2        | SPIN2    | FlexSpin (7.6.5)       | NuCode       | Runtime issues        |
+| P2        | SPIN2    | FlexSpin (7.6.5)       | Native/PASM2 | OK                    |
 
 (other versions or toolchains not listed are __not supported__, and _may or may not_ work)
 
@@ -46,5 +50,4 @@ P2/SPIN2:
 
 * Tri-color panels (e.g., with additional red channel) aren't supported
 * Horizontal mirroring not supported
-* Rotation not supported
 
